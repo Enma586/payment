@@ -3,14 +3,14 @@
  * Centralizes and exports all infrastructure connection instances.
  */
 
-const sequelize = require('./database');
-const redisConnection = require('./redis');
+import sequelize from './database.js';
+import redisConnection from './redis.js';
 
 /**
  * Exported configuration objects for the entire application.
  * Provides access to PostgreSQL (sequelize) and Redis (redisConnection).
  */
-module.exports = {
+export {
   sequelize,
   redisConnection
 };

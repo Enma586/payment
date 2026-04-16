@@ -18,7 +18,8 @@
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
     "pg": "^8.20.0",
-    "sequelize": "^6.37.8"
+    "sequelize": "^6.37.8",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

@@ -3,7 +3,7 @@
  * Optimized for BullMQ background job processing.
  */
 
-const Redis = require('ioredis');
+import Redis from 'ioredis';
 
 /**
  * ioredis configuration object.
@@ -25,4 +25,4 @@ const redisConfig = {
  */
 const redisConnection = new Redis(redisConfig);
 
-module.exports = redisConnection;
+export default redisConnection;

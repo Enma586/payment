@@ -3,7 +3,7 @@
  * This module initializes the PostgreSQL connection pool.
  */
 
-const { Sequelize } = require('sequelize');
+import { Sequelize } from 'sequelize';
 
 /**
  * Sequelize instance configured for PostgreSQL.
@@ -21,4 +21,4 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
   }
 });
 
-module.exports = sequelize;
+export default sequelize;

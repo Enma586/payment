@@ -1,23 +1,26 @@
 /**
- * @fileoverview Generic middleware to validate request bodies against a schema.
+ * @fileoverview Generic validation middleware using Zod schemas.
  */
 
 /**
- * Returns a middleware function that validates the req.body.
- * @param {import('zod').ZodSchema} schema - The Zod schema to validate against.
+ * Middleware factory that validates the request body against a Zod schema.
+ * @param {import('zod').ZodSchema} schema - The Zod schema to validate.
+ * @returns {Function} Express middleware function.
  */
-const validateSchema = (schema) => (req, res, next) => {
+export const validateSchema = (schema) => (req, res, next) => {
   try {
-    // Validate and update req.body with parsed/transformed data
+    // We parse the body. Zod will strip unknown fields and cast types.
     req.body = schema.parse(req.body);
     next();
   } catch (error) {
-    // If validation fails, pass it to the global error handler
+    // If validation fails, we send a structured 400 Bad Request response.
     return res.status(400).json({
-      status: 'fail',
-      errors: error.errors.map(e => ({ path: e.path, message: e.message }))
+      status: 'error',
+      code: 'VALIDATION_FAILED',
+      details: error.errors.map(err => ({
+        path: err.path.join('.'),
+        message: err.message
+      }))
     });
   }
 };
-
-export default validateSchema;

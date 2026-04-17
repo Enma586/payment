@@ -6,7 +6,8 @@ import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './middlewares/index.js';
 // import paymentRoutes from './routes/paymentRoutes.js'; // Lo crearemos pronto
-
+// import other routes as needed
+import apiRouter from './routes/index.js';
 const app = express();
 
 /**
@@ -26,7 +27,7 @@ app.get('/health', (req, res) => {
 /**
  * API Routes
  */
-// app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1', apiRouter); // Mount all API routes under /api/v1
 
 /**
  * Global Error Handling

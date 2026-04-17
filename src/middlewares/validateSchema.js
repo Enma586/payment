@@ -1,5 +1,5 @@
 /**
- * @fileoverview Generic validation middleware using Zod schemas.
+ * @fileoverview Robust validation middleware using Zod safeParse.
  */
 
 /**
@@ -8,19 +8,19 @@
  * @returns {Function} Express middleware function.
  */
 export const validateSchema = (schema) => (req, res, next) => {
-  try {
-    // We parse the body. Zod will strip unknown fields and cast types.
-    req.body = schema.parse(req.body);
-    next();
-  } catch (error) {
-    // If validation fails, we send a structured 400 Bad Request response.
+  const result = schema.safeParse(req.body);
+
+  if (!result.success) {
     return res.status(400).json({
       status: 'error',
       code: 'VALIDATION_FAILED',
-      details: error.errors.map(err => ({
-        path: err.path.join('.'),
-        message: err.message
+      details: result.error.issues.map(issue => ({
+        path: issue.path.join('.'),
+        message: issue.message
       }))
     });
   }
+
+  req.body = result.data;
+  next();
 };

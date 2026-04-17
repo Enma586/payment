@@ -53,3 +53,32 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 startServer();
+
+/**
+ * Graceful Shutdown handler.
+ * Ensures that DB and Redis connections are closed cleanly.
+ */
+const gracefulShutdown = async (signal) => {
+  logger.info(`\nReceived ${signal}. Starting graceful shutdown...`);
+  
+  try {
+    // 1. Aquí podrías cerrar el worker si lo exportaras
+    // await paymentWorker.close(); 
+    
+    await sequelize.close();
+    logger.info('PostgreSQL connection closed.');
+    
+    await redisConnection.quit();
+    logger.info('Redis connection closed.');
+    
+    logger.info('Shutdown complete. Goodbye!');
+    process.exit(0);
+  } catch (err) {
+    logger.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+};
+
+// Listen for termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

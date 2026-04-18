@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
   # Main Payment Gateway Application
   app:
     build: .
     container_name: payment_app
-    restart: always
+    # Set to 'no' so it doesn't run automatically on system boot
+    restart: "no"
     ports:
       - "3000:3000"
     environment:
-      # Network aliases are used instead of 'localhost' for inter-container communication
       - DB_HOST=postgres_db
       - REDIS_HOST=redis_cache
       - DB_USER=user_dev
@@ -25,14 +23,16 @@ services:
   postgres_db:
     image: postgres:15
     container_name: payment_postgres
-    restart: always
+    restart: "no"
     environment:
       POSTGRES_USER: user_dev
       POSTGRES_PASSWORD: password_dev
       POSTGRES_DB: payment_gateway_db
     ports:
       - "5432:5432"
-    # Healthcheck ensures the database is ready before the app attempts to connect
+    # Persistence: Link a Docker volume to the PG data directory
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user_dev -d payment_gateway_db"]
       interval: 5s
@@ -43,6 +43,10 @@ services:
   redis_cache:
     image: redis:7-alpine
     container_name: payment_redis
-    restart: always
+    restart: "no"
     ports:
       - "6379:6379"
+
+# Named volume definition for data persistence
+volumes:
+  payment_db_data:

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 
 const SECRET = 'tu_secreto_super_seguro_de_stripe'; // Debe ser la misma que en tu .env
 const PAYLOAD = {
-  externalId: "evt_test_123",
+  externalId: "evt_test_1234",
   amount: 5000, // $50.00
   currency: "USD",
   idempotencyKey: crypto.randomUUID(),

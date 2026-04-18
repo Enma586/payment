@@ -1,28 +1,13 @@
-/**
- * @fileoverview Redis connection configuration using ioredis.
- * Optimized for BullMQ background job processing.
- */
-
 import Redis from 'ioredis';
 
 /**
- * ioredis configuration object.
- * @type {Object}
+ * Redis connection instance for BullMQ and Caching.
  */
-const redisConfig = {
+const redisConnection = new Redis({
+  // CRITICAL: Uses 'redis_cache' when in Docker, 'localhost' for local dev
   host: process.env.REDIS_HOST || 'localhost',
   port: process.env.REDIS_PORT || 6379,
-  /**
-   * BullMQ requires maxRetriesPerRequest to be null to handle
-   * retries at the application level rather than the driver level.
-   */
-  maxRetriesPerRequest: null,
-};
-
-/**
- * Singleton instance of the Redis connection.
- * @type {import('ioredis').Redis}
- */
-const redisConnection = new Redis(redisConfig);
+  maxRetriesPerRequest: null, // Required by BullMQ
+});
 
 export default redisConnection;

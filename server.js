@@ -1,16 +1,15 @@
 /**
  * @fileoverview Main entry point for the Payment Gateway.
- * Orchestrates infrastructure connections, starts workers, and the HTTP server.
+ * Updated to support Sequelize Migrations and Production standards.
  */
 
-import 'dotenv/config'; // Loads .env into process.env at the very start
+import 'dotenv/config'; 
 import app from './src/app.js';
 import { sequelize, redisConnection } from './src/config/index.js';
 import { logger } from './src/lib/logger.js';
 
-/** * --- Background Workers ---
- * Importing the workers' index initializes the BullMQ listeners.
- * This is crucial for processing tasks in the background.
+/**
+ * Background Workers initialization.
  */
 import './src/workers/index.js'; 
 
@@ -23,31 +22,30 @@ async function startServer() {
   try {
     logger.info('Starting server bootstrap process...');
 
-    // 1. Verify Database Connection (PostgreSQL in Docker)
+    // 1. Verify Database Connection
+    // We only AUTHENTICATE. We no longer use .sync() because 
+    // migrations handle the schema versioning.
     await sequelize.authenticate();
-    // sync({ force: false }) creates tables if they don't exist
-    await sequelize.sync({ force: false });
-    logger.info('DB CONNECTED');
+    logger.info('DB CONNECTION ESTABLISHED (PostgreSQL)');
 
-    // 2. Verify Redis Connection (For BullMQ and Caching)
+    // 2. Verify Redis Connection
     await redisConnection.ping();
-    logger.info('REDIS CONNECTED');
+    logger.info('REDIS CONNECTION ESTABLISHED');
 
     // 3. Start Express Server
     app.listen(PORT, () => {
       logger.info(`SERVER RUNNING AT http://localhost:${PORT}`);
+      logger.info('Press Ctrl+C to stop');
     });
 
   } catch (error) {
-    logger.error('ERROR DURING SERVER BOOTSTRAP:');
+    logger.error('CRITICAL ERROR DURING SERVER BOOTSTRAP:');
     logger.error(error.message);
-    
-    // In production, we want the container to restart if it fails to connect
     process.exit(1);
   }
 }
 
-// Global handler for unhandled promise rejections (Good engineering practice)
+// Global handler for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
@@ -56,14 +54,12 @@ startServer();
 
 /**
  * Graceful Shutdown handler.
- * Ensures that DB and Redis connections are closed cleanly.
  */
 const gracefulShutdown = async (signal) => {
   logger.info(`\nReceived ${signal}. Starting graceful shutdown...`);
   
   try {
-    // 1. Aquí podrías cerrar el worker si lo exportaras
-    // await paymentWorker.close(); 
+    // Note: If you export your worker, call worker.close() here.
     
     await sequelize.close();
     logger.info('PostgreSQL connection closed.');
@@ -79,6 +75,5 @@ const gracefulShutdown = async (signal) => {
   }
 };
 
-// Listen for termination signals
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));

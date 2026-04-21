@@ -5,23 +5,31 @@
 import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './middlewares/index.js';
-// import paymentRoutes from './routes/paymentRoutes.js'; // Lo crearemos pronto
-// import other routes as needed
 import apiRouter from './routes/index.js';
+import { sequelize, redisConnection } from './config/index.js';
 const app = express();
 
-/**
- * Global Middlewares
- */
-app.use(cors()); // Enable Cross-Origin Resource Sharing
-app.use(express.json()); // Essential for parsing webhook JSON payloads
+app.use(cors());
+app.use(express.json());
+
+app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+  req.rawBody = req.body.toString();
+  req.body = JSON.parse(req.rawBody);
+  next();
+});
 
 /**
  * Health Check Route
  * Useful for Docker and Load Balancers to verify the service is alive.
  */
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    await redisConnection.ping();
+    res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ status: 'DOWN', timestamp: new Date().toISOString() });
+  }
 });
 
 /**

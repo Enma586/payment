@@ -1,8 +1,6 @@
-// migrations/20260418-create-transactions.js
-
 /** @type {import('sequelize-cli').Migration} */
 export const up = async (queryInterface, Sequelize) => {
-  await queryInterface.createTable('Transactions', {
+  await queryInterface.createTable('transactions', {
     id: {
       allowNull: false,
       primaryKey: true,
@@ -15,12 +13,30 @@ export const up = async (queryInterface, Sequelize) => {
       unique: true
     },
     amount: {
-      type: Sequelize.DECIMAL(10, 2),
+      type: Sequelize.INTEGER,
       allowNull: false
     },
+    currency: {
+      type: Sequelize.STRING(3),
+      allowNull: false,
+      defaultValue: 'USD'
+    },
     status: {
-      type: Sequelize.ENUM('RECEIVED', 'PROCESSING', 'COMPLETED', 'FAILED'),
+      type: Sequelize.ENUM('RECEIVED', 'PROCESSING', 'COMPLETED', 'FAILED', 'RETRYING'),
       defaultValue: 'RECEIVED'
+    },
+    idempotencyKey: {
+      type: Sequelize.STRING,
+      allowNull: false,
+      unique: true
+    },
+    rawResponse: {
+      type: Sequelize.JSONB,
+      allowNull: true
+    },
+    errorLog: {
+      type: Sequelize.TEXT,
+      allowNull: true
     },
     createdAt: {
       allowNull: false,
@@ -36,5 +52,8 @@ export const up = async (queryInterface, Sequelize) => {
 };
 
 export const down = async (queryInterface) => {
-  await queryInterface.dropTable('Transactions');
+  await queryInterface.dropTable('transactions');
+  await queryInterface.sequelize.query(
+    'DROP TYPE IF EXISTS "enum_transactions_status";'
+  );
 };

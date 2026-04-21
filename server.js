@@ -7,13 +7,16 @@ import 'dotenv/config';
 import app from './src/app.js';
 import { sequelize, redisConnection } from './src/config/index.js';
 import { logger } from './src/lib/logger.js';
-
-/**
- * Background Workers initialization.
- */
-import './src/workers/index.js'; 
+import { paymentWorker } from './src/workers/index.js'; 
 
 const PORT = process.env.PORT || 3000;
+
+const REQUIRED_ENV_VARS = ['WEBHOOK_SECRET'];
+const missingVars = REQUIRED_ENV_VARS.filter(v => !process.env[v]);
+if (missingVars.length) {
+  console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+  process.exit(1);
+}
 
 /**
  * Bootstrap function to handle asynchronous initialization.
@@ -59,8 +62,9 @@ const gracefulShutdown = async (signal) => {
   logger.info(`\nReceived ${signal}. Starting graceful shutdown...`);
   
   try {
-    // Note: If you export your worker, call worker.close() here.
-    
+    await paymentWorker.close();
+    logger.info('BullMQ worker closed.');
+
     await sequelize.close();
     logger.info('PostgreSQL connection closed.');
     

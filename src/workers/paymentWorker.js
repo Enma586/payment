@@ -60,8 +60,16 @@ paymentWorker.on('completed', (job) => {
   logger.info(`Job ${job.id} has been completed!`);
 });
 
-paymentWorker.on('failed', (job, err) => {
+paymentWorker.on('failed', async (job, err) => {
   logger.error(`Job ${job.id} has failed with ${err.message}`);
+
+  if (job && job.attemptsMade >= (job.opts?.attempts || 5)) {
+    const tx = await Transaction.findByPk(job.data.transactionId);
+    if (tx) {
+      await tx.update({ status: 'FAILED', errorLog: err.message });
+      logger.info(`Transaction ${tx.id} marked as FAILED after all retries exhausted.`);
+    }
+  }
 });
 
 export default paymentWorker;

@@ -13,10 +13,10 @@ export const errorHandler = (err, req, res, next) => {
   const message = err.message || 'Internal Server Error';
 
   // Log the error for the development team
-  logger.error(`[${req.method}] ${req.url} - Error: ${message}`, {
+  logger.error({
     stack: err.stack,
     body: req.body
-  });
+  }, `[${req.method}] ${req.url} - Error: ${message}`);
 
   // Standardized response for the client
   res.status(statusCode).json({

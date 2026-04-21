@@ -42,15 +42,14 @@ async function startServer() {
     });
 
   } catch (error) {
-    logger.error('CRITICAL ERROR DURING SERVER BOOTSTRAP:');
-    logger.error(error.message);
+    logger.error(error, 'CRITICAL ERROR DURING SERVER BOOTSTRAP');
     process.exit(1);
   }
 }
 
 // Global handler for unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error({ promise }, `Unhandled Rejection: ${reason}`);
 });
 
 startServer();
@@ -74,7 +73,7 @@ const gracefulShutdown = async (signal) => {
     logger.info('Shutdown complete. Goodbye!');
     process.exit(0);
   } catch (err) {
-    logger.error('Error during shutdown:', err);
+    logger.error(err, 'Error during shutdown');
     process.exit(1);
   }
 };

@@ -1,10 +1,15 @@
-/**
- * @fileoverview Basic logger utility.
- * In a production environment, you would use Winston or Pino.
- */
+import pino from 'pino';
 
-export const logger = {
-  info: (msg) => console.log(`[INFO] ${new Date().toISOString()}: ${msg}`),
-  error: (msg, err = '') => console.error(`[ERROR] ${new Date().toISOString()}: ${msg}`, err),
-  warn: (msg) => console.warn(`[WARN] ${new Date().toISOString()}: ${msg}`),
-};
+export const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  ...(process.env.NODE_ENV !== 'production' && {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        translateTime: 'SYS:yyyy-mm-dd HH:MM:ss',
+        ignore: 'pid,hostname'
+      }
+    }
+  })
+});

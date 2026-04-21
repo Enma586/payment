@@ -12,7 +12,7 @@ import { z } from 'zod';
 const notificationSchema = z.object({
   transactionId: z.string().uuid("Invalid internal transaction ID"),
   externalId: z.string(),
-  status: z.enum(['COMPLETED', 'FAILED', 'RETRYING']),
+  status: z.enum(['RECEIVED', 'PROCESSING', 'COMPLETED', 'FAILED', 'RETRYING']),
   amount: z.number().int(),
   currency: z.string().length(3),
   timestamp: z.string().datetime(), // ISO 8601 string

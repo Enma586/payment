@@ -6,6 +6,7 @@
 import { Worker } from 'bullmq';
 import { redisConnection } from '../config/index.js';
 import { Transaction } from '../models/index.js';
+import { notificationSchema } from '../schemas/index.js';
 import { logger } from '../lib/logger.js';
 
 /**
@@ -24,7 +25,22 @@ const paymentWorker = new Worker('payment-notifications', async (job) => {
       throw new Error(`Transaction ${transactionId} not found in database.`);
     }
 
-    // 2. Business Logic: Here you would send a Webhook or Email to the client
+    const notificationPayload = {
+      transactionId: transaction.id,
+      externalId: transaction.externalId,
+      status: transaction.status,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      timestamp: new Date().toISOString()
+    };
+
+    const validated = notificationSchema.safeParse(notificationPayload);
+    if (!validated.success) {
+      logger.error({ errors: validated.error.issues }, 'Notification payload validation failed');
+      throw new Error(`Invalid notification payload: ${validated.error.issues.map(i => i.message).join(', ')}`);
+    }
+
+    // 2. Business Logic: Send notification to the client
     logger.info(`Sending notification for status: ${transaction.status}...`);
     
     // Simulate an external API call (e.g., Axios request to the client's URL)

@@ -17,7 +17,9 @@ export const processWebhook = async (paymentData) => {
 
   try {
     // 1. Idempotency Check: Don't process the same external ID twice
-    const existingTx = await Transaction.findOne({ where: { externalId } });
+    const existingTx = await Transaction.findOne({
+      where: { externalId, idempotencyKey }
+    });
     
     if (existingTx) {
       logger.warn(`Duplicate webhook received for externalId: ${externalId}. Skipping creation.`);

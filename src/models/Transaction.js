@@ -6,10 +6,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
-/**
- * Transaction Model
- * Represents a payment record in the database.
- */
 const Transaction = sequelize.define('Transaction', {
   id: {
     type: DataTypes.UUID,
@@ -51,9 +47,30 @@ const Transaction = sequelize.define('Transaction', {
     type: DataTypes.TEXT,
     allowNull: true,
     comment: 'Details about the failure if status is FAILED',
+  },
+  provider: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Payment provider name: paypal, stripe, etc.',
+  },
+  providerPaymentId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'ID of the payment in the provider system',
+  },
+  paymentMethod: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Method used: card, paypal, pix, etc.',
+  },
+  metadata: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    defaultValue: {},
+    comment: 'Extra data: returnUrl, cancelUrl, clientReference, etc.',
   }
 }, {
-  timestamps: true, // Automatically adds createdAt and updatedAt
+  timestamps: true,
   tableName: 'transactions',
 });
 

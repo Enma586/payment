@@ -16,14 +16,24 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Rate limiter for webhook endpoints
 const webhookLimiter = rateLimit({
   windowMs: 60_000,
   max: 100,
   message: { status: 'error', code: 'RATE_LIMITED', message: 'Too many requests' }
 });
-app.use('/api/v1/payments/webhook', webhookLimiter);
 
+// Raw body capture for legacy webhook
+app.use('/api/v1/payments/webhook', webhookLimiter);
 app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
+  req.rawBody = req.body.toString();
+  req.body = JSON.parse(req.rawBody);
+  next();
+});
+
+// Raw body capture for dynamic provider webhooks
+app.use('/api/v1/webhooks/', webhookLimiter);
+app.use('/api/v1/webhooks/', express.raw({ type: 'application/json' }), (req, res, next) => {
   req.rawBody = req.body.toString();
   req.body = JSON.parse(req.rawBody);
   next();
@@ -31,7 +41,6 @@ app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }), (
 
 /**
  * Health Check Route
- * Useful for Docker and Load Balancers to verify the service is alive.
  */
 app.get('/health', async (req, res) => {
   try {
@@ -46,11 +55,10 @@ app.get('/health', async (req, res) => {
 /**
  * API Routes
  */
-app.use('/api/v1', apiRouter); // Mount all API routes under /api/v1
+app.use('/api/v1', apiRouter);
 
 /**
  * Global Error Handling
- * Important: This must be the last middleware attached to the app.
  */
 app.use(errorHandler);
 

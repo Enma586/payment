@@ -5,13 +5,13 @@
 
 import { Router } from 'express';
 import paymentRoutes from './paymentRoutes.js';
-import second from './methodRoutes.js'
+import webhookRoutes from './webhookRoutes.js';
+import methodRoutes from './methodRoutes.js';
 
 const router = Router();
 
-/**
- * Prefixing all payment routes with /payments
- */
 router.use('/payments', paymentRoutes);
+router.use('/webhooks', webhookRoutes);
+router.use('/methods', methodRoutes);
 
-export default router;                                                                                                                                                                                                                                    
+export default router;

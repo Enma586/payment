@@ -9,12 +9,18 @@ import { errorHandler } from './middlewares/index.js';
 import apiRouter from './routes/index.js';
 import { sequelize, redisConnection } from './config/index.js';
 const app = express();
-
+app.set('trust proxy', 1);
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [],
   methods: ['GET', 'POST']
 }));
-app.use(express.json());
+
+// JSON parser with raw body capture for webhook signature verification
+app.use(express.json({
+  verify: (req, res, buf, encoding) => {
+    req.rawBody = buf.toString();
+  }
+}));
 
 // Rate limiter for webhook endpoints
 const webhookLimiter = rateLimit({
@@ -23,21 +29,8 @@ const webhookLimiter = rateLimit({
   message: { status: 'error', code: 'RATE_LIMITED', message: 'Too many requests' }
 });
 
-// Raw body capture for legacy webhook
 app.use('/api/v1/payments/webhook', webhookLimiter);
-app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }), (req, res, next) => {
-  req.rawBody = req.body.toString();
-  req.body = JSON.parse(req.rawBody);
-  next();
-});
-
-// Raw body capture for dynamic provider webhooks
 app.use('/api/v1/webhooks/', webhookLimiter);
-app.use('/api/v1/webhooks/', express.raw({ type: 'application/json' }), (req, res, next) => {
-  req.rawBody = req.body.toString();
-  req.body = JSON.parse(req.rawBody);
-  next();
-});
 
 /**
  * Health Check Route

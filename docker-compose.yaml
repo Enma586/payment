@@ -1,45 +1,36 @@
 services:
-  # Main Payment Gateway Application
   app:
     build: .
     container_name: payment_app
-    # Set to 'no' so it doesn't run automatically on system boot
     restart: "no"
     ports:
-      - "3000:3000"
-    environment:
-      - DB_HOST=postgres_db
-      - REDIS_HOST=redis_cache
-      - DB_USER=user_dev
-      - DB_PASSWORD=password_dev
-      - DB_NAME=payment_gateway_db
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
     depends_on:
       postgres_db:
         condition: service_healthy
       redis_cache:
         condition: service_started
 
-  # Relational Database: PostgreSQL
   postgres_db:
     image: postgres:15
     container_name: payment_postgres
     restart: "no"
     environment:
-      POSTGRES_USER: user_dev
-      POSTGRES_PASSWORD: password_dev
-      POSTGRES_DB: payment_gateway_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
-    # Persistence: Link a Docker volume to the PG data directory
     volumes:
       - payment_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user_dev -d payment_gateway_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # In-memory Data Store: Redis (Used by BullMQ)
   redis_cache:
     image: redis:7-alpine
     container_name: payment_redis
@@ -47,6 +38,5 @@ services:
     ports:
       - "6379:6379"
 
-# Named volume definition for data persistence
 volumes:
   payment_db_data:

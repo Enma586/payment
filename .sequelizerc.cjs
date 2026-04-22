@@ -1,8 +1,6 @@
-import { fileURLToPath } from 'url';
-import path from 'path';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const path = require('path');
 
-export default {
+module.exports = {
   'config': path.resolve(__dirname, 'config', 'config.js'),
   'models-path': path.resolve(__dirname, 'src', 'models'),
   'migrations-path': path.resolve(__dirname, 'migrations'),

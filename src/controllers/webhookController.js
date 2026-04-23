@@ -4,10 +4,10 @@
  * Supports both legacy generic webhooks and dynamic provider webhooks.
  */
 
-import { Transaction } from '../models/index.js';
-import providerRegistry from '../providers/registry.js';
-import { queueService } from '../services/index.js';
-import { logger } from '../lib/logger.js';
+import { Transaction } from "../models/index.js";
+import providerRegistry from "../providers/registry.js";
+import { queueService } from "../services/index.js";
+import { logger } from "../lib/logger.js";
 
 /**
  * POST /api/v1/webhooks/:provider
@@ -27,7 +27,9 @@ export const handleProviderWebhook = async (req, res, next) => {
 
     if (!valid) {
       logger.warn(`Invalid webhook signature for provider: ${providerName}`);
-      return res.status(403).json({ status: 'error', message: 'Invalid signature' });
+      return res
+        .status(403)
+        .json({ status: "error", message: "Invalid signature" });
     }
 
     // 2. Parse the event into our standard format
@@ -35,13 +37,14 @@ export const handleProviderWebhook = async (req, res, next) => {
     logger.info({ parsed }, `Parsed webhook event from ${providerName}`);
 
     // 3. Find the existing transaction by providerPaymentId
-    const transaction = await Transaction.findOne({
-      where: { providerPaymentId: parsed.providerPaymentId }
+    // 3. Find the existing transaction
+    let transaction = await Transaction.findOne({
+      where: { providerPaymentId: parsed.providerPaymentId },
     });
 
-    if (!transaction) {
-      logger.warn(`No transaction found for providerPaymentId: ${parsed.providerPaymentId}`);
-      return res.status(200).json({ status: 'ignored', message: 'Transaction not found' });
+    // Fallback: buscar por el transactionId que enviamos en custom_id
+    if (!transaction && parsed.internalTransactionId) {
+      transaction = await Transaction.findByPk(parsed.internalTransactionId);
     }
 
     // 4. Update transaction status
@@ -54,10 +57,11 @@ export const handleProviderWebhook = async (req, res, next) => {
     await queueService.addPaymentToQueue(transaction.id);
 
     logger.info(`Transaction ${transaction.id} updated to ${parsed.status}`);
-    return res.status(200).json({ status: 'success', message: 'Webhook processed' });
-
+    return res
+      .status(200)
+      .json({ status: "success", message: "Webhook processed" });
   } catch (error) {
-    logger.error({ error: error.message }, 'Provider webhook processing error');
+    logger.error({ error: error.message }, "Provider webhook processing error");
     next(error);
   }
 };
@@ -74,12 +78,12 @@ export const handleWebhook = async (req, res, next) => {
     const transaction = await paymentService.processWebhook(req.body);
 
     return res.status(201).json({
-      status: 'success',
-      message: 'Webhook processed successfully',
+      status: "success",
+      message: "Webhook processed successfully",
       data: {
         id: transaction.id,
-        status: transaction.status
-      }
+        status: transaction.status,
+      },
     });
   } catch (error) {
     logger.error(`Controller Error: ${error.message}`);

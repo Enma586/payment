@@ -24,10 +24,6 @@ export class PayPalProvider extends PaymentProvider {
     return ['card', 'paypal'];
   }
 
-  /**
-   * Get PayPal OAuth access token with in-memory cache.
-   * Avoids requesting a new token on every API call.
-   */
   async _getAccessToken() {
     if (this._accessToken && Date.now() < this._tokenExpires) {
       return this._accessToken;
@@ -46,15 +42,10 @@ export class PayPalProvider extends PaymentProvider {
     );
 
     this._accessToken = data.access_token;
-    // Subtract 60s to avoid edge cases near expiration
     this._tokenExpires = Date.now() + (data.expires_in * 1000) - 60_000;
     return this._accessToken;
   }
 
-  /**
-   * Create a payment order using PayPal Orders API v2.
-   * Returns the approval redirect URL for the user.
-   */
   async createPayment({ amount, currency, returnUrl, cancelUrl, metadata }) {
     const token = await this._getAccessToken();
 
@@ -88,11 +79,7 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
-  /**
-   * Verify the authenticity of a PayPal webhook.
-   * Uses PayPal's certificate-based signature verification.
-   */
-   async verifyWebhook(rawBody, headers) {
+  async verifyWebhook(rawBody, headers) {
     try {
       const expectedSig = headers['paypal-transmission-sig'];
       const certUrl = headers['paypal-cert-url'];
@@ -110,21 +97,7 @@ export class PayPalProvider extends PaymentProvider {
         return { valid: true, event };
       }
 
-      // Production verification would go here
-      const { data: cert } = await axios.get(certUrl);
-      const transmissionTime = headers['paypal-transmission-time'];
-      const sigPayload = `${transmissionId}|${transmissionTime}|${this.webhookId}|${crypto.createHash('sha256').update(rawBody).digest('hex')}`;
-      const verifier = crypto.createVerify('RSA-SHA256');
-      verifier.update(sigPayload);
-      const valid = verifier.verify(cert, expectedSig, 'base64');
-
-      if (!valid) {
-        logger.warn('PayPal webhook signature verification failed');
-        return { valid: false, event: null };
-      }
-
-      const event = JSON.parse(rawBody);
-      return { valid: true, event };
+      return { valid: false, event: null };
 
     } catch (error) {
       logger.error({ error: error.message }, 'PayPal webhook verification error');
@@ -132,9 +105,33 @@ export class PayPalProvider extends PaymentProvider {
     }
   }
 
-  /**
-   * Query PayPal for the current status of an order.
-   */
+  parseWebhookEvent(event) {
+    const resource = event.resource || {};
+    const eventType = event.event_type;
+
+    let providerPaymentId = resource.id;
+    let status = 'PENDING';
+    let amount = null;
+
+    if (eventType === 'CHECKOUT.ORDER.APPROVED') {
+      providerPaymentId = resource.id;
+      status = 'COMPLETED';
+      amount = resource.purchase_units?.[0]?.amount?.value
+        ? Math.round(parseFloat(resource.purchase_units[0].amount.value) * 100)
+        : null;
+    } else if (eventType === 'PAYMENT.CAPTURE.COMPLETED') {
+      amount = resource.amount?.value
+        ? Math.round(parseFloat(resource.amount.value) * 100)
+        : null;
+    }
+
+    return {
+      providerPaymentId,
+      status,
+      amount,
+    };
+  }
+
   async getPaymentStatus(providerPaymentId) {
     const token = await this._getAccessToken();
 
@@ -149,9 +146,6 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
-  /**
-   * Refund a captured payment through PayPal.
-   */
   async refundPayment(providerPaymentId, amount) {
     const token = await this._getAccessToken();
 
@@ -172,9 +166,6 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
-  /**
-   * Map PayPal-specific statuses to our internal status enum.
-   */
   mapStatus(paypalStatus) {
     const map = {
       'CREATED': 'PENDING',

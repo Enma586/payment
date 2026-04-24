@@ -3,6 +3,7 @@ import { paymentController, webhookController } from "../controllers/index.js";
 import { verifyApiKey, verifySignature, validateSchema } from "../middlewares/index.js";
 import createPaymentSchema from "../schemas/createPaymentSchema.js";
 import paymentSchema from "../schemas/paymentSchema.js";
+import refundSchema from "../schemas/refundSchema.js";
 
 const router = Router();
 
@@ -17,6 +18,13 @@ router.get(
   "/:id/status",
   verifyApiKey,
   paymentController.getPaymentStatus,
+);
+
+router.post(
+  "/:id/refund",
+  verifyApiKey,
+  validateSchema(refundSchema),
+  paymentController.refundPayment,
 );
 
 router.get(

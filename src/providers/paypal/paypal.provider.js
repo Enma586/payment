@@ -107,22 +107,53 @@ export class PayPalProvider extends PaymentProvider {
 
   async verifyWebhook(rawBody, headers) {
     try {
-      const expectedSig = headers["paypal-transmission-sig"];
-      const certUrl = headers["paypal-cert-url"];
       const transmissionId = headers["paypal-transmission-id"];
+      const transmissionSig = headers["paypal-transmission-sig"];
+      const certUrl = headers["paypal-cert-url"];
+      const transmissionTime = headers["paypal-transmission-time"];
+      const authAlgo = headers["paypal-auth-algo"] || "SHA256withRSA";
 
-      if (!expectedSig || !certUrl || !transmissionId) {
+      if (!transmissionId || !transmissionSig || !certUrl) {
         logger.warn("PayPal webhook missing required headers");
         return { valid: false, event: null };
       }
 
-      // Sandbox mode: skip signature verification for development
-      if (this.clientId && this.clientSecret && this.webhookId) {
-        const event = JSON.parse(rawBody);
-        logger.info("PayPal webhook accepted (sandbox/dev mode)");
+      const event = JSON.parse(rawBody);
+
+      // Sandbox/dev mode: skip verification if PAYPAL_SKIP_VERIFY is set
+      if (process.env.PAYPAL_SKIP_VERIFY === "true") {
+        logger.info("PayPal webhook accepted (sandbox/dev mode - skip verify)");
         return { valid: true, event };
       }
 
+      // Production: verify via PayPal API
+      const token = await this._getAccessToken();
+
+      const { data } = await axios.post(
+        `${PAYPAL_API}/v1/notifications/verify-webhook-signature`,
+        {
+          transmission_id: transmissionId,
+          transmission_time: transmissionTime,
+          cert_url: certUrl,
+          auth_algo: authAlgo,
+          transmission_sig: transmissionSig,
+          webhook_id: this.webhookId,
+          webhook_event: event,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (data.verification_status === "SUCCESS") {
+        logger.info("PayPal webhook signature verified");
+        return { valid: true, event };
+      }
+
+      logger.warn("PayPal webhook signature verification failed");
       return { valid: false, event: null };
     } catch (error) {
       logger.error(

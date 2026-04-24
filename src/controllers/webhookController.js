@@ -38,6 +38,7 @@ export const handleProviderWebhook = async (req, res, next) => {
 
     // 3. Find the existing transaction by providerPaymentId
     // 3. Find the existing transaction
+    // 3. Find the existing transaction
     let transaction = await Transaction.findOne({
       where: { providerPaymentId: parsed.providerPaymentId },
     });
@@ -45,6 +46,14 @@ export const handleProviderWebhook = async (req, res, next) => {
     // Fallback: buscar por el transactionId que enviamos en custom_id
     if (!transaction && parsed.internalTransactionId) {
       transaction = await Transaction.findByPk(parsed.internalTransactionId);
+    }
+    if (!transaction) {
+      logger.warn(
+        `No transaction found for providerPaymentId: ${parsed.providerPaymentId}`,
+      );
+      return res
+        .status(200)
+        .json({ status: "ignored", message: "Transaction not found" });
     }
 
     // 4. Update transaction status

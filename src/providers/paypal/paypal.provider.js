@@ -86,6 +86,25 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
+  async capturePayment(orderId) {
+    const token = await this._getAccessToken();
+    const { data } = await axios.post(
+      `${PAYPAL_API}/v2/checkout/orders/${orderId}/capture`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return {
+      providerPaymentId: data.id,
+      status: data.status === "COMPLETED" ? "COMPLETED" : "PENDING",
+      rawResponse: data,
+    };
+  }
+
   async verifyWebhook(rawBody, headers) {
     try {
       const expectedSig = headers["paypal-transmission-sig"];
@@ -143,6 +162,7 @@ export class PayPalProvider extends PaymentProvider {
       internalTransactionId,
     };
   }
+
   async getPaymentStatus(providerPaymentId) {
     const token = await this._getAccessToken();
 

@@ -20,6 +20,7 @@ import { PaymentProvider } from '../provider.interface.js';
 import { logger } from '../../lib/logger.js';
 
 const STRIPE_API = 'https://api.stripe.com/v1';
+const REQUEST_TIMEOUT = 15_000; // 15 seconds
 
 export class StripeProvider extends PaymentProvider {
 
@@ -73,6 +74,7 @@ export class StripeProvider extends PaymentProvider {
           Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
+        timeout: REQUEST_TIMEOUT,
       }
     );
 
@@ -185,7 +187,7 @@ export class StripeProvider extends PaymentProvider {
   async getSessionStatus(sessionId) {
     const { data } = await axios.get(
       `${STRIPE_API}/checkout/sessions/${sessionId}`,
-      { headers: { Authorization: `Bearer ${this.apiKey}` } }
+      { headers: { Authorization: `Bearer ${this.apiKey}` }, timeout: REQUEST_TIMEOUT }
     );
 
     return {
@@ -242,6 +244,7 @@ export class StripeProvider extends PaymentProvider {
           Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
+        timeout: REQUEST_TIMEOUT,
       }
     );
 

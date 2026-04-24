@@ -31,6 +31,7 @@ import { logger } from "../lib/logger.js";
  * @param {string} [paymentData.returnUrl] - URL for successful payment redirect.
  * @param {string} [paymentData.cancelUrl] - URL for cancelled payment redirect.
  * @param {string} [paymentData.idempotencyKey] - Client key to prevent duplicates.
+ * @param {string} [paymentData.webhookUrl] - Client URL to receive status notifications.
  * @param {Object} [paymentData.metadata] - Arbitrary client metadata.
  * @returns {Promise<Object>} The created or existing transaction with provider details.
  */
@@ -70,6 +71,7 @@ export const createPayment = async (paymentData) => {
     provider,
     paymentMethod: paymentMethod || providerInstance.getSupportedMethods()[0],
     idempotencyKey: idempotencyKey || `ik_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    webhookUrl: metadata?.webhookUrl || null,
     status: "RECEIVED",
     metadata: { returnUrl, cancelUrl, ...metadata },
   });

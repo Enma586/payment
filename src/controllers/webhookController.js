@@ -1,7 +1,11 @@
 /**
  * @fileoverview Webhook Controller.
- * Handles incoming webhooks from payment providers.
- * Supports both legacy generic webhooks and dynamic provider webhooks.
+ * Handles incoming webhooks from payment providers (PayPal, Stripe, etc.)
+ * and dispatches notifications to the client's system via the worker queue.
+ *
+ * Supports two endpoints:
+ * - Dynamic:   POST /api/v1/webhooks/:provider — routes to the correct provider.
+ * - Legacy:    POST /api/v1/payments/webhook   — backward compatible handler.
  */
 
 import { Transaction } from "../models/index.js";
@@ -11,8 +15,18 @@ import { logger } from "../lib/logger.js";
 
 /**
  * POST /api/v1/webhooks/:provider
- * Dynamic webhook handler. Routes to the correct provider
- * for signature verification and event parsing.
+ * Dynamic webhook handler.
+ *
+ * Flow:
+ *   1. Verify webhook signature using the provider's verification method.
+ *   2. Parse the event into the standard internal format.
+ *   3. Find the transaction by providerPaymentId (with custom_id fallback).
+ *   4. Update the transaction status and raw response.
+ *   5. Enqueue a notification job for the client.
+ *
+ * @param {import('express').Request}  req  - Express request. `req.params.provider` is the provider name.
+ * @param {import('express').Response} res  - Express response.
+ * @param {import('express').NextFunction} next - Express next middleware.
  */
 export const handleProviderWebhook = async (req, res, next) => {
   try {
@@ -36,17 +50,16 @@ export const handleProviderWebhook = async (req, res, next) => {
     const parsed = provider.parseWebhookEvent(event);
     logger.info({ parsed }, `Parsed webhook event from ${providerName}`);
 
-    // 3. Find the existing transaction by providerPaymentId
-    // 3. Find the existing transaction
     // 3. Find the existing transaction
     let transaction = await Transaction.findOne({
       where: { providerPaymentId: parsed.providerPaymentId },
     });
 
-    // Fallback: buscar por el transactionId que enviamos en custom_id
+    // Fallback: search by the internal transactionId sent in custom_id
     if (!transaction && parsed.internalTransactionId) {
       transaction = await Transaction.findByPk(parsed.internalTransactionId);
     }
+
     if (!transaction) {
       logger.warn(
         `No transaction found for providerPaymentId: ${parsed.providerPaymentId}`,
@@ -78,6 +91,10 @@ export const handleProviderWebhook = async (req, res, next) => {
 /**
  * POST /api/v1/payments/webhook
  * Legacy webhook handler. Kept for backward compatibility.
+ *
+ * @param {import('express').Request}  req  - Express request.
+ * @param {import('express').Response} res  - Express response.
+ * @param {import('express').NextFunction} next - Express next middleware.
  */
 export const handleWebhook = async (req, res, next) => {
   try {

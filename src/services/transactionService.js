@@ -1,25 +1,13 @@
-/**
- * @fileoverview Transaction Service.
- * Handles core business logic for payment creation, status queries,
- * and provider interactions.
- */
+import { Transaction } from "../models/index.js";
+import providerRegistry from "../providers/registry.js";
+import { queueService } from "./index.js";
+import { logger } from "../lib/logger.js";
 
-import { Transaction } from '../models/index.js';
-import providerRegistry from '../providers/registry.js';
-import { queueService } from './index.js';
-import { logger } from '../lib/logger.js';
-
-/**
- * Creates a payment intent with the specified provider.
- * @param {Object} paymentData - Validated payment data from the schema.
- * @returns {Promise<Object>} The created transaction with provider details.
- */
 export const createPayment = async (paymentData) => {
   const { amount, currency, provider, paymentMethod, returnUrl, cancelUrl, metadata } = paymentData;
 
   const providerInstance = providerRegistry.getProvider(provider);
 
-  // 1. Persist initial record in PostgreSQL
   const transaction = await Transaction.create({
     externalId: `tx_${Date.now()}_${Math.random().toString(36).slice(2)}`,
     amount,
@@ -27,11 +15,10 @@ export const createPayment = async (paymentData) => {
     provider,
     paymentMethod: paymentMethod || providerInstance.getSupportedMethods()[0],
     idempotencyKey: `ik_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    status: 'RECEIVED',
+    status: "RECEIVED",
     metadata: { returnUrl, cancelUrl, ...metadata },
   });
 
-  // 2. Call the provider to create the payment
   const result = await providerInstance.createPayment({
     amount,
     currency,
@@ -40,11 +27,10 @@ export const createPayment = async (paymentData) => {
     metadata: { transactionId: transaction.id },
   });
 
-  // 3. Update transaction with provider details
   await transaction.update({
     providerPaymentId: result.providerPaymentId,
     rawResponse: result,
-    status: 'PROCESSING',
+    status: "PROCESSING",
   });
 
   logger.info(`Payment created: ${transaction.id} via ${provider}`);
@@ -57,11 +43,46 @@ export const createPayment = async (paymentData) => {
   };
 };
 
-/**
- * Gets the current status and details of a transaction.
- * @param {string} transactionId - Internal UUID of the transaction.
- * @returns {Promise<Object|null>} The transaction data or null if not found.
- */
+export const captureByOrderId = async (orderId) => {
+  const transaction = await Transaction.findOne({
+    where: { providerPaymentId: orderId },
+  });
+
+  if (!transaction) {
+    throw new Error(`No transaction found for orderId: ${orderId}`);
+  }
+
+  if (transaction.status === "COMPLETED") {
+    return { transaction, alreadyCaptured: true };
+  }
+
+  const providerInstance = providerRegistry.getProvider(transaction.provider);
+  const result = await providerInstance.capturePayment(orderId);
+
+  await transaction.update({
+    status: "COMPLETED",
+    rawResponse: result.rawResponse,
+  });
+
+  await queueService.addPaymentToQueue(transaction.id);
+  logger.info(`Transaction ${transaction.id} captured and updated to COMPLETED`);
+
+  return { transaction, alreadyCaptured: false };
+};
+
+export const cancelByOrderId = async (orderId) => {
+  const transaction = await Transaction.findOne({
+    where: { providerPaymentId: orderId },
+  });
+
+  if (!transaction) return;
+
+  if (transaction.status !== "COMPLETED") {
+    await transaction.update({ status: "FAILED" });
+    logger.info(`Transaction ${transaction.id} cancelled`);
+  }
+};
+
 export const getPaymentStatus = async (transactionId) => {
   const transaction = await Transaction.findByPk(transactionId);
 
@@ -83,10 +104,6 @@ export const getPaymentStatus = async (transactionId) => {
   };
 };
 
-/**
- * Lists all available providers and their supported payment methods.
- * @returns {Array<{name: string, methods: string[]}>}
- */
 export const getAvailableMethods = () => {
   return providerRegistry.listAll();
 };

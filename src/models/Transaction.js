@@ -63,6 +63,11 @@ const Transaction = sequelize.define('Transaction', {
     allowNull: true,
     comment: 'Method used: card, paypal, pix, etc.',
   },
+  webhookUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Client URL to send payment status notifications to',
+  },
   metadata: {
     type: DataTypes.JSONB,
     allowNull: true,

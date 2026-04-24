@@ -1,3 +1,19 @@
+/**
+ * @fileoverview Stripe Payment Provider.
+ * Implements the PaymentProvider interface for Stripe Checkout Sessions.
+ *
+ * Flow:
+ *   1. createPayment()    → Creates a Stripe Checkout Session, returns redirect URL.
+ *   2. User pays on Stripe → Stripe redirects to success_url with session_id.
+ *   3. Stripe sends webhook → verifyWebhook() validates HMAC-SHA256 signature.
+ *   4. parseWebhookEvent() → Maps Stripe events to internal status format.
+ *
+ * Notes:
+ *   - The providerPaymentId stored is a Checkout Session ID (cs_xxx).
+ *   - For refunds, the session is resolved to a Payment Intent ID automatically.
+ *   - Webhook verification includes a 5-minute timestamp tolerance to prevent replay attacks.
+ */
+
 import crypto from 'crypto';
 import axios from 'axios';
 import { PaymentProvider } from '../provider.interface.js';
@@ -21,6 +37,22 @@ export class StripeProvider extends PaymentProvider {
     return ['card', 'apple_pay', 'google_pay'];
   }
 
+  /**
+   * Creates a Stripe Checkout Session for a one-time payment.
+   *
+   * The `success_url` includes `{CHECKOUT_SESSION_ID}` as a placeholder
+   * that Stripe replaces with the actual session ID on redirect.
+   * The internal transaction ID is stored in `metadata.internalId` for
+   * webhook and callback correlation.
+   *
+   * @param {Object} params
+   * @param {number} params.amount - Amount in cents.
+   * @param {string} params.currency - 3-letter currency code.
+   * @param {string} [params.returnUrl] - Success redirect URL.
+   * @param {string} [params.cancelUrl] - Cancel redirect URL.
+   * @param {Object} [params.metadata] - Must include `transactionId`.
+   * @returns {Promise<{providerPaymentId: string, paymentIntentId: string|null, redirectUrl: string, status: string}>}
+   */
   async createPayment({ amount, currency, returnUrl, cancelUrl, metadata }) {
     const params = new URLSearchParams({
       amount: String(amount),
@@ -40,7 +72,7 @@ export class StripeProvider extends PaymentProvider {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/x-www-form-urlencoded',
-        }
+        },
       }
     );
 
@@ -52,6 +84,17 @@ export class StripeProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Verifies the authenticity of a Stripe webhook using HMAC-SHA256.
+   *
+   * Stripe signs the payload with format: `t=timestamp,v1=signature`.
+   * This method reconstructs the signature and compares it.
+   * Webhooks older than 5 minutes are rejected to prevent replay attacks.
+   *
+   * @param {string} rawBody - Raw request body string.
+   * @param {Object} headers - Request headers (must include `stripe-signature`).
+   * @returns {Promise<{valid: boolean, event: Object|null}>}
+   */
   async verifyWebhook(rawBody, headers) {
     try {
       const signature = headers['stripe-signature'];
@@ -76,9 +119,9 @@ export class StripeProvider extends PaymentProvider {
       }
 
       // Timestamp tolerance: reject webhooks older than 5 minutes
-      const toleranceMs = 5 * 60 * 1000;
+      const toleranceSec = 5 * 60;
       const currentTime = Math.floor(Date.now() / 1000);
-      if (Math.abs(currentTime - parseInt(timestamp)) > toleranceMs / 1000) {
+      if (Math.abs(currentTime - parseInt(timestamp)) > toleranceSec) {
         logger.warn('Stripe webhook timestamp outside tolerance');
         return { valid: false, event: null };
       }
@@ -104,6 +147,17 @@ export class StripeProvider extends PaymentProvider {
     }
   }
 
+  /**
+   * Parses a verified Stripe webhook event into the standard internal format.
+   *
+   * Supported events:
+   * - checkout.session.completed → COMPLETED
+   * - checkout.session.expired   → FAILED
+   * - payment_intent.payment_failed → FAILED
+   *
+   * @param {Object} event - The verified Stripe event object.
+   * @returns {{providerPaymentId: string, status: string, amount: number|null, internalTransactionId: string|null, paymentIntentId: string|null}}
+   */
   parseWebhookEvent(event) {
     const object = event.data?.object || {};
     const eventType = event.type;
@@ -122,6 +176,12 @@ export class StripeProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Queries Stripe for the current status of a Checkout Session.
+   *
+   * @param {string} sessionId - The Checkout Session ID (cs_xxx).
+   * @returns {Promise<{status: string, paymentIntentId: string|null, rawResponse: Object}>}
+   */
   async getSessionStatus(sessionId) {
     const { data } = await axios.get(
       `${STRIPE_API}/checkout/sessions/${sessionId}`,
@@ -135,10 +195,31 @@ export class StripeProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Gets the payment status by provider payment ID.
+   * Delegates to getSessionStatus().
+   *
+   * @param {string} providerPaymentId - The Checkout Session ID.
+   * @returns {Promise<{status: string, paymentIntentId: string|null, rawResponse: Object}>}
+   */
   async getPaymentStatus(providerPaymentId) {
     return this.getSessionStatus(providerPaymentId);
   }
 
+  /**
+   * Refunds a payment through Stripe.
+   *
+   * Since we store the Checkout Session ID (not the Payment Intent ID),
+   * this method first resolves the session to get the Payment Intent,
+   * then creates the refund.
+   *
+   * Supports partial refunds by specifying an amount less than the original.
+   *
+   * @param {string} providerPaymentId - The Checkout Session ID (cs_xxx).
+   * @param {number} amount - Amount to refund in cents.
+   * @returns {Promise<{refundId: string, status: string}>}
+   * @throws {Error} If no payment_intent is found for the session.
+   */
   async refundPayment(providerPaymentId, amount) {
     // First, get the payment_intent from the session
     const session = await this.getSessionStatus(providerPaymentId);
@@ -160,7 +241,7 @@ export class StripeProvider extends PaymentProvider {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/x-www-form-urlencoded',
-        }
+        },
       }
     );
 
@@ -170,6 +251,12 @@ export class StripeProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Maps Stripe-specific payment statuses to our internal status enum.
+   *
+   * @param {string} stripeStatus - Stripe payment_status value.
+   * @returns {string} One of: COMPLETED, PENDING, FAILED.
+   */
   mapStatus(stripeStatus) {
     const map = {
       'paid': 'COMPLETED',

@@ -29,7 +29,7 @@ const Transaction = sequelize.define('Transaction', {
     defaultValue: 'USD',
   },
   status: {
-    type: DataTypes.ENUM('RECEIVED', 'PROCESSING', 'COMPLETED', 'FAILED', 'RETRYING'),
+    type: DataTypes.ENUM('RECEIVED', 'PROCESSING', 'COMPLETED', 'FAILED', 'RETRYING', 'REFUNDED'),
     defaultValue: 'RECEIVED',
   },
   idempotencyKey: {

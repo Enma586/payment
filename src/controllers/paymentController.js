@@ -140,3 +140,37 @@ export const handleCancel = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * POST /api/v1/payments/:id/refund
+ * Refunds a completed transaction.
+ *
+ * Supports full refunds (no body) and partial refunds (with amount).
+ * Only transactions with status COMPLETED can be refunded.
+ *
+ * @param {import('express').Request}  req  - `req.params.id` is the transaction UUID.
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+export const refundPayment = async (req, res, next) => {
+  try {
+    const result = await transactionService.refundPayment(req.params.id, req.body);
+
+    return res.status(200).json({
+      status: "success",
+      data: result,
+    });
+  } catch (error) {
+    logger.error({ error: error.message }, "Error refunding payment");
+
+    if (error.message.includes('not found') || error.message.includes('Cannot refund')) {
+      return res.status(400).json({
+        status: "error",
+        code: "BAD_REQUEST",
+        message: error.message,
+      });
+    }
+
+    next(error);
+  }
+};

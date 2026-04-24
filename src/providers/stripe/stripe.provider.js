@@ -21,18 +21,16 @@ export class StripeProvider extends PaymentProvider {
     return ['card', 'apple_pay', 'google_pay'];
   }
 
-  /**
-   * Create a Checkout Session using Stripe API.
-   * Returns the session URL for the user to complete payment.
-   */
   async createPayment({ amount, currency, returnUrl, cancelUrl, metadata }) {
     const params = new URLSearchParams({
       amount: String(amount),
       currency: currency.toLowerCase(),
       'metadata[internalId]': metadata?.transactionId || '',
       mode: 'payment',
-      success_url: returnUrl || 'https://example.com/success',
-      cancel_url: cancelUrl || 'https://example.com/cancel',
+      success_url: returnUrl
+        ? `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`
+        : `${process.env.BASE_URL}/api/v1/payments/callback/stripe?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${process.env.BASE_URL}/api/v1/payments/callback/stripe?cancelled=true`,
     });
 
     const { data } = await axios.post(
@@ -48,15 +46,12 @@ export class StripeProvider extends PaymentProvider {
 
     return {
       providerPaymentId: data.id,
+      paymentIntentId: data.payment_intent,
       redirectUrl: data.url,
       status: 'PENDING',
     };
   }
 
-  /**
-   * Verify the authenticity of a Stripe webhook.
-   * Uses Stripe's HMAC-SHA256 signature with timestamp tolerance.
-   */
   async verifyWebhook(rawBody, headers) {
     try {
       const signature = headers['stripe-signature'];
@@ -77,6 +72,14 @@ export class StripeProvider extends PaymentProvider {
       const expectedSig = sigMap['v1'];
 
       if (!timestamp || !expectedSig) {
+        return { valid: false, event: null };
+      }
+
+      // Timestamp tolerance: reject webhooks older than 5 minutes
+      const toleranceMs = 5 * 60 * 1000;
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (Math.abs(currentTime - parseInt(timestamp)) > toleranceMs / 1000) {
+        logger.warn('Stripe webhook timestamp outside tolerance');
         return { valid: false, event: null };
       }
 
@@ -101,10 +104,6 @@ export class StripeProvider extends PaymentProvider {
     }
   }
 
-  /**
-   * Parse a verified Stripe webhook event into our standard format.
-   * Maps Stripe event types to our internal status.
-   */
   parseWebhookEvent(event) {
     const object = event.data?.object || {};
     const eventType = event.type;
@@ -118,31 +117,39 @@ export class StripeProvider extends PaymentProvider {
       providerPaymentId: object.id,
       status,
       amount: object.amount_total || object.amount || null,
+      internalTransactionId: object.metadata?.internalId || null,
+      paymentIntentId: object.payment_intent || null,
     };
   }
 
-  /**
-   * Query Stripe for the current status of a Checkout Session.
-   */
-  async getPaymentStatus(providerPaymentId) {
+  async getSessionStatus(sessionId) {
     const { data } = await axios.get(
-      `${STRIPE_API}/checkout/sessions/${providerPaymentId}`,
+      `${STRIPE_API}/checkout/sessions/${sessionId}`,
       { headers: { Authorization: `Bearer ${this.apiKey}` } }
     );
 
     return {
       status: this.mapStatus(data.payment_status),
+      paymentIntentId: data.payment_intent,
       rawResponse: data,
     };
   }
 
-  /**
-   * Refund a payment through Stripe.
-   * Supports partial refunds by specifying an amount.
-   */
+  async getPaymentStatus(providerPaymentId) {
+    return this.getSessionStatus(providerPaymentId);
+  }
+
   async refundPayment(providerPaymentId, amount) {
+    // First, get the payment_intent from the session
+    const session = await this.getSessionStatus(providerPaymentId);
+    const paymentIntentId = session.paymentIntentId;
+
+    if (!paymentIntentId) {
+      throw new Error('Cannot refund: no payment_intent found for this session');
+    }
+
     const params = new URLSearchParams({
-      payment_intent: providerPaymentId,
+      payment_intent: paymentIntentId,
       amount: String(amount),
     });
 
@@ -163,9 +170,6 @@ export class StripeProvider extends PaymentProvider {
     };
   }
 
-  /**
-   * Map Stripe-specific statuses to our internal status enum.
-   */
   mapStatus(stripeStatus) {
     const map = {
       'paid': 'COMPLETED',

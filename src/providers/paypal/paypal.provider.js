@@ -1,10 +1,27 @@
+/**
+ * @fileoverview PayPal Payment Provider.
+ * Implements the PaymentProvider interface for PayPal Orders API v2.
+ *
+ * Flow:
+ *   1. createPayment()    → Creates a PayPal Order, returns approval redirect URL.
+ *   2. User approves       → PayPal redirects to return_url with ?token=ORDER_ID.
+ *   3. capturePayment()   → Captures the approved order via PayPal API.
+ *   4. Webhook (optional) → PayPal sends CHECKOUT.ORDER.APPROVED on approval.
+ *
+ * Security:
+ *   - Webhook signature verification via PayPal API (production) or skip flag (sandbox).
+ *   - All outgoing requests have a 15-second timeout to prevent hanging.
+ *   - The internal transaction ID is stored in `custom_id` for webhook correlation.
+ */
+
 import axios from "axios";
-import crypto from "crypto";
 import { PaymentProvider } from "../provider.interface.js";
 import { logger } from "../../lib/logger.js";
 
 const PAYPAL_API =
   process.env.PAYPAL_API_URL || "https://api-m.sandbox.paypal.com";
+
+const REQUEST_TIMEOUT = 15_000; // 15 seconds
 
 export class PayPalProvider extends PaymentProvider {
   constructor() {
@@ -24,6 +41,11 @@ export class PayPalProvider extends PaymentProvider {
     return ["card", "paypal"];
   }
 
+  /**
+   * Gets a cached PayPal access token, or requests a new one if expired.
+   *
+   * @returns {Promise<string>} A valid OAuth2 access token.
+   */
   async _getAccessToken() {
     if (this._accessToken && Date.now() < this._tokenExpires) {
       return this._accessToken;
@@ -40,6 +62,7 @@ export class PayPalProvider extends PaymentProvider {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
+        timeout: REQUEST_TIMEOUT,
       },
     );
 
@@ -48,6 +71,20 @@ export class PayPalProvider extends PaymentProvider {
     return this._accessToken;
   }
 
+  /**
+   * Creates a PayPal Order for checkout.
+   *
+   * The internal transaction ID is stored in `purchase_units[0].custom_id`
+   * so it can be retrieved in webhooks and callbacks for correlation.
+   *
+   * @param {Object} params
+   * @param {number} params.amount - Amount in cents.
+   * @param {string} params.currency - 3-letter currency code.
+   * @param {string} [params.returnUrl] - URL for successful payment redirect.
+   * @param {string} [params.cancelUrl] - URL for cancelled payment redirect.
+   * @param {Object} [params.metadata] - Must include `transactionId`.
+   * @returns {Promise<{providerPaymentId: string, redirectUrl: string|null, status: string}>}
+   */
   async createPayment({ amount, currency, returnUrl, cancelUrl, metadata }) {
     const token = await this._getAccessToken();
 
@@ -74,6 +111,7 @@ export class PayPalProvider extends PaymentProvider {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        timeout: REQUEST_TIMEOUT,
       },
     );
 
@@ -86,6 +124,15 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Captures an approved PayPal Order.
+   *
+   * Called after the user approves the payment on PayPal's checkout page.
+   * This finalizes the payment and transfers the funds.
+   *
+   * @param {string} orderId - The PayPal Order ID (e.g. "5O190127TN364715T").
+   * @returns {Promise<{providerPaymentId: string, status: string, rawResponse: Object}>}
+   */
   async capturePayment(orderId) {
     const token = await this._getAccessToken();
     const { data } = await axios.post(
@@ -96,6 +143,7 @@ export class PayPalProvider extends PaymentProvider {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        timeout: REQUEST_TIMEOUT,
       },
     );
     return {
@@ -105,6 +153,19 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Verifies the authenticity of a PayPal webhook.
+   *
+   * In sandbox mode (PAYPAL_SKIP_VERIFY=true), the signature check is skipped
+   * for development convenience.
+   *
+   * In production, calls PayPal's verify-webhook-signature API to validate
+   * the transmission using the webhook ID, certificate, and signature.
+   *
+   * @param {string} rawBody - Raw request body string.
+   * @param {Object} headers - Request headers with PayPal transmission headers.
+   * @returns {Promise<{valid: boolean, event: Object|null}>}
+   */
   async verifyWebhook(rawBody, headers) {
     try {
       const transmissionId = headers["paypal-transmission-id"];
@@ -145,6 +206,7 @@ export class PayPalProvider extends PaymentProvider {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
+          timeout: REQUEST_TIMEOUT,
         },
       );
 
@@ -164,6 +226,16 @@ export class PayPalProvider extends PaymentProvider {
     }
   }
 
+  /**
+   * Parses a PayPal webhook event into the standard internal format.
+   *
+   * Supported events:
+   * - CHECKOUT.ORDER.APPROVED   → COMPLETED (extracts custom_id as internalTransactionId).
+   * - PAYMENT.CAPTURE.COMPLETED → PENDING (capture confirmation, amount extracted).
+   *
+   * @param {Object} event - The verified PayPal webhook event.
+   * @returns {{providerPaymentId: string, status: string, amount: number|null, internalTransactionId: string|null}}
+   */
   parseWebhookEvent(event) {
     const resource = event.resource || {};
     const eventType = event.event_type;
@@ -194,12 +266,18 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Queries PayPal for the current status of an Order.
+   *
+   * @param {string} providerPaymentId - The PayPal Order ID.
+   * @returns {Promise<{status: string, rawResponse: Object}>}
+   */
   async getPaymentStatus(providerPaymentId) {
     const token = await this._getAccessToken();
 
     const { data } = await axios.get(
       `${PAYPAL_API}/v2/checkout/orders/${providerPaymentId}`,
-      { headers: { Authorization: `Bearer ${token}` } },
+      { headers: { Authorization: `Bearer ${token}` }, timeout: REQUEST_TIMEOUT },
     );
 
     return {
@@ -208,6 +286,16 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Refunds a captured payment through PayPal.
+   *
+   * Note: The providerPaymentId for refunds must be the Capture ID,
+   * not the Order ID. The Capture ID is available in rawResponse from capturePayment().
+   *
+   * @param {string} providerPaymentId - The PayPal Capture ID.
+   * @param {number} amount - Amount to refund in cents.
+   * @returns {Promise<{refundId: string, status: string}>}
+   */
   async refundPayment(providerPaymentId, amount) {
     const token = await this._getAccessToken();
 
@@ -219,6 +307,7 @@ export class PayPalProvider extends PaymentProvider {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        timeout: REQUEST_TIMEOUT,
       },
     );
 
@@ -228,6 +317,12 @@ export class PayPalProvider extends PaymentProvider {
     };
   }
 
+  /**
+   * Maps PayPal Order statuses to our internal status enum.
+   *
+   * @param {string} paypalStatus - PayPal order status value.
+   * @returns {string} One of: PENDING, PROCESSING, COMPLETED, FAILED.
+   */
   mapStatus(paypalStatus) {
     const map = {
       CREATED: "PENDING",

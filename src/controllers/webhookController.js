@@ -10,7 +10,7 @@
 
 import { Transaction } from "../models/index.js";
 import providerRegistry from "../providers/registry.js";
-import { queueService } from "../services/index.js";
+import { queueService, paymentService } from "../services/index.js";
 import { logger } from "../lib/logger.js";
 
 /**

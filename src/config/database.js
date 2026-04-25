@@ -1,18 +1,23 @@
 import { Sequelize } from 'sequelize';
 
-/**
- * Database instance configuration.
- * Uses environment variables provided by Docker or .env file.
- */
+const sslOptions = process.env.DATABASE_URL
+  ? {
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      },
+    }
+  : {};
+
 const sequelize = new Sequelize(
-  process.env.DB_NAME || 'payment_gateway_db',
-  process.env.DB_USER || 'user_dev',
-  process.env.DB_PASSWORD || 'password_dev',
+  process.env.DATABASE_URL ||
+    `postgres://${process.env.DB_USER || 'user_dev'}:${process.env.DB_PASSWORD || 'password_dev'}@${process.env.DB_HOST || 'localhost'}:5432/${process.env.DB_NAME || 'payment_gateway_db'}`,
   {
-    // CRITICAL: Uses 'postgres_db' when in Docker, 'localhost' for local dev
-    host: process.env.DB_HOST || 'localhost',
     dialect: 'postgres',
-    logging: false, // Set to console.log to see SQL queries
+    logging: false,
+    ...sslOptions,
   }
 );
 

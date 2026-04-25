@@ -4,10 +4,8 @@ jspm_packages/
 
 # Variables de entorno y secretos (¡NUNCA SUBIR!)
 .env
-.env.example
 .env.test
 .env.production
-*.env
 
 # Logs
 logs

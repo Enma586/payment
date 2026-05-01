@@ -1,11 +1,22 @@
-
 services:
+  # El balanceador de carga (La única puerta de entrada al exterior)
+  nginx:
+    image: nginx:alpine
+    container_name: payment_load_balancer
+    ports:
+      - "80:80" # Escucha en el puerto estándar de internet
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+
+  # Tu API de Node.js (Ahora escalable)
   app:
     build: .
-    container_name: payment_app
+    # Borramos 'container_name' para que Docker pueda generar nombres dinámicos (app-1, app-2...)
     restart: "no"
-    ports:
-      - "${PORT:-3000}:3000"
+    expose:
+      - "3000" # Exponemos el puerto SOLO a la red interna de Docker, no a tu PC
     env_file:
       - .env
     depends_on:
@@ -13,7 +24,10 @@ services:
         condition: service_healthy
       redis_cache:
         condition: service_started
+    deploy:
+      replicas: 3 # ¡Aquí está la magia! Levantará 3 copias idénticas
 
+  # Base de Datos (Se mantiene igual)
   postgres_db:
     image: postgres:15
     container_name: payment_postgres
@@ -32,6 +46,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # Caché/Cola (Se mantiene igual)
   redis_cache:
     image: redis:7-alpine
     container_name: payment_redis

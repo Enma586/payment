@@ -5,8 +5,10 @@
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import { serve, setup } from 'swagger-ui-express';
 import { errorHandler } from './middlewares/index.js';
 import apiRouter from './routes/index.js';
+import { swaggerSpec } from './swagger/index.js';
 import { sequelize, redisConnection } from './config/index.js';
 const app = express();
 app.set('trust proxy', 1);
@@ -21,6 +23,14 @@ app.use(express.json({
     req.rawBody = buf.toString();
   }
 }));
+
+// Swagger API Documentation
+app.use('/api-docs', serve, setup(swaggerSpec, {
+  explorer: true,
+  customSiteTitle: 'Payment Gateway API Docs',
+}));
+
+app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
 
 // Rate limiter for webhook endpoints
 const webhookLimiter = rateLimit({

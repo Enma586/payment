@@ -65,6 +65,41 @@ const options = {
             message: { type: 'string' },
           },
         },
+        StatusResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', example: 'success' },
+            data: {
+              type: 'object',
+              properties: {
+                id:             { type: 'string', format: 'uuid' },
+                status:         { type: 'string', enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'] },
+                amount:         { type: 'integer' },
+                currency:       { type: 'string' },
+                provider:       { type: 'string' },
+                providerPaymentId: { type: 'string' },
+                metadata:       { type: 'object' },
+                createdAt:      { type: 'string', format: 'date-time' },
+                updatedAt:      { type: 'string', format: 'date-time' },
+              },
+            },
+          },
+        },
+        RefundResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', example: 'success' },
+            data: {
+              type: 'object',
+              properties: {
+                id:             { type: 'string', format: 'uuid' },
+                status:         { type: 'string', example: 'REFUNDED' },
+                amountRefunded: { type: 'integer' },
+                refundId:       { type: 'string' },
+              },
+            },
+          },
+        },
       },
     },
   },

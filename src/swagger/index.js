@@ -9,7 +9,7 @@ const options = {
       description: 'API unificada para procesar pagos con múltiples proveedores (Stripe, PayPal).',
     },
     servers: [
-      { url: 'http://localhost:3000', description: 'Local dev' },
+      { url: process.env.BASE_URL || 'http://localhost:3000', description: 'Servidor activo' },
     ],
     components: {
       securitySchemes: {

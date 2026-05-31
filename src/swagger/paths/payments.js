@@ -13,6 +13,18 @@
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreatePaymentInput'
+ *           example:
+ *             amount: 1000
+ *             currency: USD
+ *             provider: stripe
+ *             paymentMethod: card
+ *             returnUrl: https://micomercio.com/success
+ *             cancelUrl: https://micomercio.com/cancel
+ *             webhookUrl: https://micomercio.com/webhooks/pagos
+ *             idempotencyKey: pago-cliente-abc-001
+ *             metadata:
+ *               orderId: ORD-12345
+ *               customerEmail: cliente@ejemplo.com
  *     responses:
  *       201:
  *         description: Pago creado exitosamente
@@ -20,6 +32,13 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/PaymentResponse'
+ *           example:
+ *             status: success
+ *             data:
+ *               transactionId: d1a2b3c4-5678-90ab-cdef-1234567890ab
+ *               providerPaymentId: pi_3Nc9VZ2eZvKYlo2C1xJ8mM9Z
+ *               redirectUrl: https://checkout.stripe.com/c/pay/cs_test_xxx
+ *               status: PROCESSING
  *       400:
  *         description: Error de validación
  *         content:
@@ -52,12 +71,29 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/StatusResponse'
+ *           example:
+ *             status: success
+ *             data:
+ *               id: d1a2b3c4-5678-90ab-cdef-1234567890ab
+ *               status: COMPLETED
+ *               amount: 1000
+ *               currency: USD
+ *               provider: stripe
+ *               providerPaymentId: pi_3Nc9VZ2eZvKYlo2C1xJ8mM9Z
+ *               metadata:
+ *                 orderId: ORD-12345
+ *               createdAt: '2026-05-31T10:00:00.000Z'
+ *               updatedAt: '2026-05-31T10:01:00.000Z'
  *       404:
  *         description: Transacción no encontrada
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *           example:
+ *             status: error
+ *             code: NOT_FOUND
+ *             message: Transaction not found
  *       401:
  *         description: API key inválida o faltante
  *
@@ -76,11 +112,15 @@
  *           type: string
  *           format: uuid
  *         description: UUID de la transacción a reembolsar
+ *         example: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *     requestBody:
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/RefundInput'
+ *           example:
+ *             amount: 500
+ *             reason: Cliente solicita reembolso parcial
  *     responses:
  *       200:
  *         description: Reembolso procesado exitosamente
@@ -88,6 +128,13 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/RefundResponse'
+ *           example:
+ *             status: success
+ *             data:
+ *               transactionId: d1a2b3c4-5678-90ab-cdef-1234567890ab
+ *               refundId: rf_3Nc9VZ2eZvKYlo2C1xJ8mM9Z
+ *               status: REFUNDED
+ *               amount: 500
  *       400:
  *         description: No se puede reembolsar (transacción no completada o no encontrada)
  *         content:

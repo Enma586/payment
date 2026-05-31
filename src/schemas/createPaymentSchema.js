@@ -37,6 +37,11 @@ const createPaymentSchema = z.object({
   returnUrl: z.string().url('Return URL must be a valid URL').optional(),
   cancelUrl: z.string().url('Cancel URL must be a valid URL').optional(),
 
+  webhookUrl: z.string()
+    .url('Webhook URL must be a valid URL')
+    .optional()
+    .describe('URL donde recibirás notificaciones POST cuando cambie el estado del pago'),
+
   idempotencyKey: z.string()
     .min(1, 'Idempotency key cannot be empty')
     .max(128, 'Idempotency key must be at most 128 characters')

@@ -21,6 +21,17 @@
  *           schema:
  *             type: object
  *             description: Payload del webhook (varía según el proveedor)
+ *           example:
+ *             id: evt_3Nc9VZ2eZvKYlo2C1xJ8mM9Z
+ *             type: checkout.session.completed
+ *             data:
+ *               object:
+ *                 id: cs_test_xxx
+ *                 payment_status: paid
+ *                 amount_total: 1000
+ *                 currency: usd
+ *                 metadata:
+ *                   transactionId: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *     responses:
  *       200:
  *         description: Webhook procesado exitosamente
@@ -69,6 +80,14 @@
  *               rawResponse:
  *                 type: object
  *                 description: Datos adicionales del webhook
+ *           example:
+ *             externalId: ext-pago-999
+ *             amount: 2500
+ *             currency: USD
+ *             idempotencyKey: webhook-unicov3-001
+ *             rawResponse:
+ *               source: sistema-externo
+ *               reference: INV-2026-001
  *     responses:
  *       201:
  *         description: Webhook procesado exitosamente
@@ -91,7 +110,13 @@
  *                       format: uuid
  *                     status:
  *                       type: string
- *                       example: COMPLETED
+ *                       example: RECEIVED
+ *           example:
+ *             status: success
+ *             message: Webhook processed successfully
+ *             data:
+ *               id: d1a2b3c4-5678-90ab-cdef-1234567890ab
+ *               status: RECEIVED
  *       401:
  *         description: Firma inválida
  */

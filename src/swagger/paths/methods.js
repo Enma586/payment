@@ -29,4 +29,13 @@
  *                         items:
  *                           type: string
  *                           example: card
+ *             example:
+ *               status: success
+ *               data:
+ *                 - provider: stripe
+ *                   methods:
+ *                     - card
+ *                 - provider: paypal
+ *                   methods:
+ *                     - paypal
  */

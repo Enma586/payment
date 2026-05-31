@@ -38,7 +38,7 @@ import { logger } from "../lib/logger.js";
 export const createPayment = async (paymentData) => {
   const {
     amount, currency, provider, paymentMethod,
-    returnUrl, cancelUrl, metadata, idempotencyKey,
+    returnUrl, cancelUrl, webhookUrl, metadata, idempotencyKey,
   } = paymentData;
 
   // Idempotency: if client sends a key, check if a transaction already exists.
@@ -71,7 +71,7 @@ export const createPayment = async (paymentData) => {
     provider,
     paymentMethod: paymentMethod || providerInstance.getSupportedMethods()[0],
     idempotencyKey: idempotencyKey || `ik_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-    webhookUrl: metadata?.webhookUrl || null,
+    webhookUrl: webhookUrl || metadata?.webhookUrl || null,
     status: "RECEIVED",
     metadata: { returnUrl, cancelUrl, ...metadata },
   });

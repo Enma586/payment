@@ -19,6 +19,9 @@
  *                 timestamp:
  *                   type: string
  *                   format: date-time
+ *             example:
+ *               status: UP
+ *               timestamp: '2026-05-31T10:00:00.000Z'
  *       503:
  *         description: Servicio no disponible (DB o Redis caído)
  *         content:
@@ -32,4 +35,7 @@
  *                 timestamp:
  *                   type: string
  *                   format: date-time
+ *             example:
+ *               status: DOWN
+ *               timestamp: '2026-05-31T10:00:00.000Z'
  */

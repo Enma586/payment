@@ -1,6 +1,8 @@
 # Payment Gateway
 
-Un microservicio unificado de pasarela de pagos que abstrae multiples proveedores (PayPal, Stripe) detras de una API REST consistente. Permite crear pagos, consultar estados, procesar reembolsos y recibir notificaciones webhook asincronas con un unico contrato de integracion.
+Un microservicio unificado de pasarela de pagos que abstrae multiples proveedores (PayPal) detras de una API REST consistente. Permite crear pagos, consultar estados, procesar reembolsos y recibir notificaciones webhook asincronas con un unico contrato de integracion.
+
+> **Demo en vivo:** [`https://payment-gateway-0dwo.onrender.com/api-docs`](https://payment-gateway-0dwo.onrender.com/api-docs) — Documentacion interactiva de la API (Swagger UI).
 
 ---
 
@@ -99,6 +101,10 @@ Un microservicio unificado de pasarela de pagos que abstrae multiples proveedore
 
 ## Inicio Rapido
 
+### Probar online (sin instalacion)
+
+[`https://payment-gateway-0dwo.onrender.com/api-docs`](https://payment-gateway-0dwo.onrender.com/api-docs) — Swagger UI interactivo para probar todos los endpoints.
+
 ### Con Docker (recomendado)
 
 ```bash
@@ -123,6 +129,10 @@ npm run dev
 ---
 
 ## API
+
+La documentacion interactiva (Swagger UI) esta disponible en:
+- **Produccion:** [`https://payment-gateway-0dwo.onrender.com/api-docs`](https://payment-gateway-0dwo.onrender.com/api-docs)
+- **Local:** `http://localhost:3000/api-docs`
 
 ### Endpoints Publicos
 
@@ -168,7 +178,6 @@ npm run dev
 | Proveedor | Version API | Autenticacion | Verificacion Webhook |
 |-----------|-------------|---------------|----------------------|
 | PayPal    | Orders v2   | OAuth2 (Client Credentials) | API de verificacion de PayPal |
-| Stripe    | Checkout Sessions | Secret Key | HMAC-SHA256 con tolerancia de tiempo |
 
 Para agregar un nuevo proveedor, implemente la clase abstracta `PaymentProvider` y registrela en el `ProviderRegistry`. El registro se realiza automaticamente si las variables de entorno del proveedor estan presentes.
 
@@ -218,12 +227,6 @@ Al menos un proveedor debe estar configurado para que el gateway registre metodo
 | `PAYPAL_WEBHOOK_ID` | No* | -- | ID del webhook de PayPal para verificacion |
 | `PAYPAL_API_URL` | No | `https://api-m.sandbox.paypal.com` | URL base de la API de PayPal |
 | `PAYPAL_SKIP_VERIFY` | No | `false` | Omitir verificacion de webhook (solo sandbox) |
-
-**Stripe:**
-| Variable | Requerida | Valor por Defecto | Descripcion |
-|----------|-----------|-------------------|-------------|
-| `STRIPE_SECRET_KEY` | No* | -- | Stripe Secret Key |
-| `STRIPE_WEBHOOK_SECRET` | No* | -- | Secreto de firma del webhook de Stripe |
 
 ---
 

@@ -18,6 +18,7 @@ const redisConnection = new Redis({
   port: parseInt(process.env.REDIS_PORT) || 6379,
   password: process.env.REDIS_PASSWORD || undefined,
   maxRetriesPerRequest: null, // Required by BullMQ
+  tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
 });
 
 export default redisConnection;

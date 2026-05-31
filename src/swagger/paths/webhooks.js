@@ -11,9 +11,9 @@
  *         required: true
  *         schema:
  *           type: string
- *           enum: [stripe, paypal]
+ *           enum: [paypal]
  *         description: Nombre del proveedor de pagos
- *         example: stripe
+ *         example: paypal
  *     requestBody:
  *       required: true
  *       content:
@@ -21,17 +21,6 @@
  *           schema:
  *             type: object
  *             description: Payload del webhook (varía según el proveedor)
- *           example:
- *             id: evt_3Nc9VZ2eZvKYlo2C1xJ8mM9Z
- *             type: checkout.session.completed
- *             data:
- *               object:
- *                 id: cs_test_xxx
- *                 payment_status: paid
- *                 amount_total: 1000
- *                 currency: usd
- *                 metadata:
- *                   transactionId: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *     responses:
  *       200:
  *         description: Webhook procesado exitosamente

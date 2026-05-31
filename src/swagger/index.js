@@ -27,7 +27,7 @@ const options = {
           properties: {
             amount:        { type: 'integer', description: 'Monto en centavos (ej. 1000 = $10.00)', example: 1000 },
             currency:      { type: 'string', description: 'Código ISO 4217', example: 'USD' },
-            provider:      { type: 'string', enum: ['stripe', 'paypal'], example: 'stripe' },
+            provider:      { type: 'string', enum: ['paypal'], example: 'paypal' },
             paymentMethod: { type: 'string', example: 'card' },
             returnUrl:     { type: 'string', format: 'uri', example: 'https://micomercio.com/success' },
             cancelUrl:     { type: 'string', format: 'uri', example: 'https://micomercio.com/cancel' },

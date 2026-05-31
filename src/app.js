@@ -5,7 +5,6 @@
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { serve, setup } from 'swagger-ui-express';
 import { errorHandler } from './middlewares/index.js';
 import apiRouter from './routes/index.js';
 import { swaggerSpec } from './swagger/index.js';
@@ -25,12 +24,30 @@ app.use(express.json({
 }));
 
 // Swagger API Documentation
-app.use('/api-docs', serve, setup(swaggerSpec, {
-  explorer: true,
-  customSiteTitle: 'Payment Gateway API Docs',
-}));
-
 app.get('/api-docs.json', (req, res) => res.json(swaggerSpec));
+
+app.get('/api-docs', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Payment Gateway API Docs</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({
+      url: '/api-docs.json',
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      presets: [SwaggerUIBundle.presets.apis],
+    });
+  </script>
+</body>
+</html>`);
+});
 
 // Rate limiter for webhook endpoints
 const webhookLimiter = rateLimit({

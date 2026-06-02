@@ -21,6 +21,16 @@
  *           schema:
  *             type: object
  *             description: Payload del webhook (varía según el proveedor)
+ *           example:
+ *             event_type: CHECKOUT.ORDER.APPROVED
+ *             resource:
+ *               id: 5O190127TN364715T
+ *               status: COMPLETED
+ *               purchase_units:
+ *                 - amount:
+ *                     value: "10.00"
+ *                       currency_code: USD
+ *               custom_id: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *     responses:
  *       200:
  *         description: Webhook procesado exitosamente

@@ -4,7 +4,12 @@
  *   post:
  *     tags: [Payments]
  *     summary: Crear una intención de pago
- *     description: Crea un pago con el proveedor especificado. Retorna URL de redirección para el cliente.
+ *     description: |
+ *       Crea un pago con el proveedor especificado. Retorna URL de redirección para el cliente.
+ *
+ *       **Idempotencia:** Si envías el mismo `idempotencyKey` en otra petición, no se crea un duplicado.
+ *       En su lugar, retorna la transacción existente con status `200` en vez de `201`.
+ *       Esto es útil para reintentar sin riesgo de cobrar dos veces.
  *     security:
  *       - ApiKeyAuth: []
  *     requestBody:
@@ -17,17 +22,16 @@
  *             amount: 1000
  *             currency: USD
  *             provider: paypal
- *             paymentMethod: card
+ *             paymentMethod: paypal
  *             returnUrl: https://micomercio.com/success
  *             cancelUrl: https://micomercio.com/cancel
  *             webhookUrl: https://micomercio.com/webhooks/pagos
  *             idempotencyKey: pago-cliente-abc-001
  *             metadata:
  *               orderId: ORD-12345
- *               customerEmail: cliente@ejemplo.com
  *     responses:
  *       201:
- *         description: Pago creado exitosamente
+ *         description: Pago creado exitosamente (nueva transacción)
  *         content:
  *           application/json:
  *             schema:
@@ -36,8 +40,21 @@
  *             status: success
  *             data:
  *               transactionId: d1a2b3c4-5678-90ab-cdef-1234567890ab
- *               providerPaymentId: pi_3Nc9VZ2eZvKYlo2C1xJ8mM9Z
- *               redirectUrl: https://checkout.stripe.com/c/pay/cs_test_xxx
+ *               providerPaymentId: 5O190127TN364715T
+ *               redirectUrl: https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T
+ *               status: PROCESSING
+ *       200:
+ *         description: Transacción existente (mismo idempotencyKey — no se cobró de nuevo)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaymentResponse'
+ *           example:
+ *             status: success
+ *             data:
+ *               transactionId: d1a2b3c4-5678-90ab-cdef-1234567890ab
+ *               providerPaymentId: 5O190127TN364715T
+ *               redirectUrl: https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T
  *               status: PROCESSING
  *       400:
  *         description: Error de validación
@@ -52,7 +69,13 @@
  *   get:
  *     tags: [Payments]
  *     summary: Consultar estado de una transacción
- *     description: Retorna el estado actual y detalles de una transacción por su UUID.
+ *     description: |
+ *       Retorna el estado actual y detalles de una transacción por su UUID.
+ *
+ *       **Estados posibles:** `RECEIVED` → `PROCESSING` → `COMPLETED` / `FAILED` / `REFUNDED`
+ *       - Usa el `transactionId` que recibiste al crear el pago.
+ *       - Una vez que PayPal completa el pago y envía el webhook, el estado cambia a `COMPLETED`.
+ *       - Si el pago fue reembolsado, el estado cambia a `REFUNDED`.
  *     security:
  *       - ApiKeyAuth: []
  *     parameters:
@@ -78,8 +101,8 @@
  *               status: COMPLETED
  *               amount: 1000
  *               currency: USD
- *               provider: stripe
- *               providerPaymentId: pi_3Nc9VZ2eZvKYlo2C1xJ8mM9Z
+ *               provider: paypal
+ *               providerPaymentId: 5O190127TN364715T
  *               metadata:
  *                 orderId: ORD-12345
  *               createdAt: '2026-05-31T10:00:00.000Z'
@@ -132,7 +155,7 @@
  *             status: success
  *             data:
  *               transactionId: d1a2b3c4-5678-90ab-cdef-1234567890ab
- *               refundId: rf_3Nc9VZ2eZvKYlo2C1xJ8mM9Z
+ *               refundId: 5O190127TN364715T
  *               status: REFUNDED
  *               amount: 500
  *       400:

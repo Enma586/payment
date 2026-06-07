@@ -50,10 +50,10 @@ const options = {
             data: {
               type: 'object',
               properties: {
-                id:             { type: 'string', format: 'uuid' },
-                providerPaymentId: { type: 'string' },
-                redirectUrl:    { type: 'string', format: 'uri' },
-                status:         { type: 'string', enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'] },
+                transactionId:   { type: 'string', format: 'uuid', description: 'UUID interno de la transacción' },
+                providerPaymentId: { type: 'string', description: 'ID del pago en el proveedor (PayPal Order ID)' },
+                redirectUrl:    { type: 'string', format: 'uri', description: 'URL para redirigir al usuario al checkout' },
+                status:         { type: 'string', enum: ['RECEIVED', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED'] },
               },
             },
           },

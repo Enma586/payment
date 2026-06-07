@@ -6,10 +6,10 @@ const options = {
     info: {
       title: 'Payment Gateway API',
       version: '1.0.0',
-      description: 'API unificada para procesar pagos con múltiples proveedores (Stripe, PayPal).',
+      description: 'Unified payment gateway API that abstracts multiple providers (PayPal) behind a consistent REST interface. Create payments, check status, process refunds, and receive async webhook notifications.',
     },
     servers: [
-      { url: process.env.BASE_URL || 'http://localhost:3000', description: 'Servidor activo' },
+      { url: process.env.BASE_URL || 'http://localhost:3000', description: 'Active server' },
     ],
     components: {
       securitySchemes: {
@@ -17,7 +17,7 @@ const options = {
           type: 'apiKey',
           in: 'header',
           name: 'x-api-key',
-          description: 'API key para pruebas: demo-key-123',
+          description: 'Test API key: demo-key-123',
         },
       },
       schemas: {
@@ -25,21 +25,21 @@ const options = {
           type: 'object',
           required: ['amount', 'currency', 'provider'],
           properties: {
-            amount:        { type: 'integer', description: 'Monto en centavos (ej. 1000 = $10.00)', example: 1000 },
-            currency:      { type: 'string', description: 'Código ISO 4217', example: 'USD' },
+            amount:        { type: 'integer', description: 'Amount in cents (e.g. 1000 = $10.00)', example: 1000 },
+            currency:      { type: 'string', description: 'ISO 4217 currency code', example: 'USD' },
             provider:      { type: 'string', enum: ['paypal'], example: 'paypal' },
-            paymentMethod: { type: 'string', example: 'card' },
-            returnUrl:     { type: 'string', format: 'uri', example: 'https://micomercio.com/success' },
-            cancelUrl:     { type: 'string', format: 'uri', example: 'https://micomercio.com/cancel' },
-            webhookUrl:    { type: 'string', format: 'uri', description: 'URL para notificaciones POST de cambios de estado', example: 'https://micomercio.com/webhooks/pagos' },
-            idempotencyKey:{ type: 'string', maxLength: 128, example: 'mi-idempotency-key-unica-001' },
-            metadata:      { type: 'object', example: { orderId: 'ORD-12345', customerEmail: 'cliente@ejemplo.com' } },
+            paymentMethod: { type: 'string', example: 'paypal' },
+            returnUrl:     { type: 'string', format: 'uri', example: 'https://mymerchant.com/success' },
+            cancelUrl:     { type: 'string', format: 'uri', example: 'https://mymerchant.com/cancel' },
+            webhookUrl:    { type: 'string', format: 'uri', description: 'URL to receive POST notifications on status changes', example: 'https://mymerchant.com/webhooks/payments' },
+            idempotencyKey:{ type: 'string', maxLength: 128, example: 'my-unique-idempotency-key-001' },
+            metadata:      { type: 'object', example: { orderId: 'ORD-12345', customerEmail: 'customer@example.com' } },
           },
         },
         RefundInput: {
           type: 'object',
           properties: {
-            amount: { type: 'integer', description: 'Monto parcial en centavos (opcional, omite para reembolso total)' },
+            amount: { type: 'integer', description: 'Partial amount in cents (optional, omit for full refund)' },
             reason: { type: 'string', maxLength: 500 },
           },
         },
@@ -50,9 +50,9 @@ const options = {
             data: {
               type: 'object',
               properties: {
-                transactionId:   { type: 'string', format: 'uuid', description: 'UUID interno de la transacción' },
-                providerPaymentId: { type: 'string', description: 'ID del pago en el proveedor (PayPal Order ID)' },
-                redirectUrl:    { type: 'string', format: 'uri', description: 'URL para redirigir al usuario al checkout' },
+                transactionId:   { type: 'string', format: 'uuid', description: 'Internal transaction UUID' },
+                providerPaymentId: { type: 'string', description: 'Payment ID in the provider (PayPal Order ID)' },
+                redirectUrl:    { type: 'string', format: 'uri', description: 'URL to redirect the user to checkout' },
                 status:         { type: 'string', enum: ['RECEIVED', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED'] },
               },
             },
@@ -74,7 +74,7 @@ const options = {
               type: 'object',
               properties: {
                 id:             { type: 'string', format: 'uuid' },
-                status:         { type: 'string', enum: ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'] },
+                status:         { type: 'string', enum: ['RECEIVED', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED'] },
                 amount:         { type: 'integer' },
                 currency:       { type: 'string' },
                 provider:       { type: 'string' },
@@ -93,7 +93,7 @@ const options = {
             data: {
               type: 'object',
               properties: {
-                id:             { type: 'string', format: 'uuid' },
+                transactionId:   { type: 'string', format: 'uuid' },
                 status:         { type: 'string', example: 'REFUNDED' },
                 amountRefunded: { type: 'integer' },
                 refundId:       { type: 'string' },

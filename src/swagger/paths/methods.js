@@ -3,11 +3,11 @@
  * /api/v1/methods:
  *   get:
  *     tags: [Methods]
- *     summary: Listar proveedores de pago disponibles
- *     description: Retorna todos los proveedores de pago registrados y sus métodos soportados.
+ *     summary: List available payment providers
+ *     description: Returns all registered payment providers and their supported methods.
  *     responses:
  *       200:
- *         description: Lista de proveedores y métodos
+ *         description: List of providers and methods
  *         content:
  *           application/json:
  *             schema:
@@ -23,16 +23,17 @@
  *                     properties:
  *                       provider:
  *                         type: string
- *                         example: stripe
+ *                         example: paypal
  *                       methods:
  *                         type: array
  *                         items:
  *                           type: string
- *                           example: card
+ *                           example: paypal
  *             example:
  *               status: success
  *               data:
  *                 - provider: paypal
  *                   methods:
  *                     - paypal
+ *                     - card
  */

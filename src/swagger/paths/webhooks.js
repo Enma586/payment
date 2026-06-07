@@ -3,8 +3,8 @@
  * /api/v1/webhooks/{provider}:
  *   post:
  *     tags: [Webhooks]
- *     summary: Recibir webhook de un proveedor de pagos
- *     description: Endpoint dinámico que recibe webhooks de proveedores (stripe, paypal). Cada proveedor verifica su propia firma internamente.
+ *     summary: Receive webhook from a payment provider
+ *     description: Dynamic endpoint that receives webhooks from payment providers (paypal). Each provider verifies its own signature internally.
  *     parameters:
  *       - in: path
  *         name: provider
@@ -12,7 +12,7 @@
  *         schema:
  *           type: string
  *           enum: [paypal]
- *         description: Nombre del proveedor de pagos
+ *         description: Payment provider name
  *         example: paypal
  *     requestBody:
  *       required: true
@@ -20,7 +20,7 @@
  *         application/json:
  *           schema:
  *             type: object
- *             description: Payload del webhook (varía según el proveedor)
+ *             description: Webhook payload (varies by provider)
  *           example:
  *             event_type: CHECKOUT.ORDER.APPROVED
  *             resource:
@@ -33,7 +33,7 @@
  *               custom_id: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *     responses:
  *       200:
- *         description: Webhook procesado exitosamente
+ *         description: Webhook processed successfully
  *         content:
  *           application/json:
  *             schema:
@@ -46,13 +46,13 @@
  *                   type: string
  *                   example: Webhook processed
  *       403:
- *         description: Firma del webhook inválida
+ *         description: Invalid webhook signature
  *
  * /api/v1/payments/webhook:
  *   post:
  *     tags: [Webhooks]
- *     summary: Webhook legacy (compatibilidad hacia atrás)
- *     description: Endpoint de webhook con validación de firma compartida. Procesa notificaciones de pago externas.
+ *     summary: Legacy webhook (backward compatibility)
+ *     description: Webhook endpoint with shared HMAC signature validation. Processes external payment notifications.
  *     requestBody:
  *       required: true
  *       content:
@@ -63,33 +63,33 @@
  *             properties:
  *               externalId:
  *                 type: string
- *                 description: ID externo de la transacción
+ *                 description: External transaction ID
  *                 example: tx_abc123
  *               amount:
  *                 type: integer
- *                 description: Monto en centavos
+ *                 description: Amount in cents
  *                 example: 1000
  *               currency:
  *                 type: string
- *                 description: Código ISO 4217
+ *                 description: ISO 4217 currency code
  *                 example: USD
  *               idempotencyKey:
  *                 type: string
- *                 description: Clave de idempotencia
+ *                 description: Idempotency key
  *               rawResponse:
  *                 type: object
- *                 description: Datos adicionales del webhook
+ *                 description: Additional webhook data
  *           example:
- *             externalId: ext-pago-999
+ *             externalId: ext-payment-999
  *             amount: 2500
  *             currency: USD
- *             idempotencyKey: webhook-unicov3-001
+ *             idempotencyKey: webhook-unique-v3-001
  *             rawResponse:
- *               source: sistema-externo
+ *               source: external-system
  *               reference: INV-2026-001
  *     responses:
  *       201:
- *         description: Webhook procesado exitosamente
+ *         description: Webhook processed successfully
  *         content:
  *           application/json:
  *             schema:
@@ -117,5 +117,5 @@
  *               id: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *               status: RECEIVED
  *       401:
- *         description: Firma inválida
+ *         description: Invalid signature
  */

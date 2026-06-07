@@ -3,11 +3,11 @@
  * /health:
  *   get:
  *     tags: [Health]
- *     summary: Verificar estado del servicio
- *     description: Health check que verifica la conectividad con PostgreSQL y Redis.
+ *     summary: Health check
+ *     description: Health check endpoint that verifies PostgreSQL and Redis connectivity.
  *     responses:
  *       200:
- *         description: Servicio saludable
+ *         description: Service is healthy
  *         content:
  *           application/json:
  *             schema:
@@ -23,7 +23,7 @@
  *               status: UP
  *               timestamp: '2026-05-31T10:00:00.000Z'
  *       503:
- *         description: Servicio no disponible (DB o Redis caído)
+ *         description: Service unavailable (DB or Redis down)
  *         content:
  *           application/json:
  *             schema:

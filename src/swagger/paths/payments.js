@@ -3,25 +3,24 @@
  * /api/v1/payments/create:
  *   post:
  *     tags: [Payments]
- *     summary: Crear una intención de pago
+ *     summary: Create a payment intent
  *     description: |
- *       Crea un pago con el proveedor especificado. Retorna URL de redirección para el cliente.
+ *       Creates a payment with the specified provider. Returns a redirect URL for the client.
  *
- *       **Cómo completar el pago:**
- *       1. Crea el pago aquí — recibirás un `transactionId` y un `redirectUrl`
- *       2. Abre el `redirectUrl` en un navegador
- *       3. Inicia sesión en PayPal (sandbox) y aprueba el pago
- *       4. PayPal te redirige automáticamente y la transacción pasa a `COMPLETED`
- *       5. Consulta el estado con `GET /api/v1/payments/{id}/status`
+ *       **How to complete the payment:**
+ *       1. Create the payment here — you'll receive a `transactionId` and `redirectUrl`
+ *       2. Open the `redirectUrl` in a browser
+ *       3. Log into PayPal (sandbox) and approve the payment
+ *       4. PayPal automatically redirects back and the transaction becomes `COMPLETED`
+ *       5. Check the status with `GET /api/v1/payments/{id}/status`
  *
- *       **Cuenta sandbox para pruebas:**
- *       - Correo: `sb-5evpo51532843@personal.example.com`
- *       - Contraseña: `/kd*w{2I`
- *       *(crea tu propia cuenta en https://developer.paypal.com/dashboard/accounts)*
+ *       **Sandbox test account:**
+ *       - Email: `sb-5evpo51532843@personal.example.com`
+ *       - Password: `/kd*w{2I`
  *
- *       **Idempotencia:** Si envías el mismo `idempotencyKey` en otra petición, no se crea un duplicado.
- *       En su lugar, retorna la transacción existente con status `200` en vez de `201`.
- *       Esto es útil para reintentar sin riesgo de cobrar dos veces.
+ *       **Idempotency:** Sending the same `idempotencyKey` again does not create a duplicate.
+ *       Instead, it returns the existing transaction with status `200` instead of `201`.
+ *       Useful for retries without risk of double charging.
  *     security:
  *       - ApiKeyAuth: []
  *     requestBody:
@@ -35,15 +34,15 @@
  *             currency: USD
  *             provider: paypal
  *             paymentMethod: paypal
- *             returnUrl: https://micomercio.com/success
- *             cancelUrl: https://micomercio.com/cancel
- *             webhookUrl: https://micomercio.com/webhooks/pagos
- *             idempotencyKey: pago-cliente-abc-001
+ *             returnUrl: https://mymerchant.com/success
+ *             cancelUrl: https://mymerchant.com/cancel
+ *             webhookUrl: https://mymerchant.com/webhooks/payments
+ *             idempotencyKey: order-customer-abc-001
  *             metadata:
  *               orderId: ORD-12345
  *     responses:
  *       201:
- *         description: Pago creado exitosamente (nueva transacción)
+ *         description: Payment created successfully (new transaction)
  *         content:
  *           application/json:
  *             schema:
@@ -56,7 +55,7 @@
  *               redirectUrl: https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T
  *               status: PROCESSING
  *       200:
- *         description: Transacción existente (mismo idempotencyKey — no se cobró de nuevo)
+ *         description: Existing transaction returned (same idempotencyKey — no double charge)
  *         content:
  *           application/json:
  *             schema:
@@ -69,25 +68,25 @@
  *               redirectUrl: https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T
  *               status: PROCESSING
  *       400:
- *         description: Error de validación
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
- *         description: API key inválida o faltante
+ *         description: Invalid or missing API key
  *
  * /api/v1/payments/{id}/status:
  *   get:
  *     tags: [Payments]
- *     summary: Consultar estado de una transacción
+ *     summary: Get transaction status
  *     description: |
- *       Retorna el estado actual y detalles de una transacción por su UUID.
+ *       Returns the current status and details of a transaction by its UUID.
  *
- *       **Estados posibles:** `RECEIVED` → `PROCESSING` → `COMPLETED` / `FAILED` / `REFUNDED`
- *       - Usa el `transactionId` que recibiste al crear el pago.
- *       - Una vez que PayPal completa el pago y envía el webhook, el estado cambia a `COMPLETED`.
- *       - Si el pago fue reembolsado, el estado cambia a `REFUNDED`.
+ *       **State machine:** `RECEIVED` → `PROCESSING` → `COMPLETED` / `FAILED` / `REFUNDED`
+ *       - Use the `transactionId` you received when creating the payment.
+ *       - Once PayPal completes the payment and sends the webhook, the status changes to `COMPLETED`.
+ *       - If the payment was refunded, the status changes to `REFUNDED`.
  *     security:
  *       - ApiKeyAuth: []
  *     parameters:
@@ -97,11 +96,11 @@
  *         schema:
  *           type: string
  *           format: uuid
- *         description: UUID de la transacción
+ *         description: Transaction UUID
  *         example: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *     responses:
  *       200:
- *         description: Estado de la transacción
+ *         description: Transaction status
  *         content:
  *           application/json:
  *             schema:
@@ -120,7 +119,7 @@
  *               createdAt: '2026-05-31T10:00:00.000Z'
  *               updatedAt: '2026-05-31T10:01:00.000Z'
  *       404:
- *         description: Transacción no encontrada
+ *         description: Transaction not found
  *         content:
  *           application/json:
  *             schema:
@@ -130,13 +129,13 @@
  *             code: NOT_FOUND
  *             message: Transaction not found
  *       401:
- *         description: API key inválida o faltante
+ *         description: Invalid or missing API key
  *
  * /api/v1/payments/{id}/refund:
  *   post:
  *     tags: [Payments]
- *     summary: Reembolsar una transacción
- *     description: Reembolsa total o parcialmente una transacción completada.
+ *     summary: Refund a transaction
+ *     description: Refunds a completed transaction fully or partially.
  *     security:
  *       - ApiKeyAuth: []
  *     parameters:
@@ -146,7 +145,7 @@
  *         schema:
  *           type: string
  *           format: uuid
- *         description: UUID de la transacción a reembolsar
+ *         description: UUID of the transaction to refund
  *         example: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *     requestBody:
  *       content:
@@ -155,10 +154,10 @@
  *             $ref: '#/components/schemas/RefundInput'
  *           example:
  *             amount: 500
- *             reason: Cliente solicita reembolso parcial
+ *             reason: Customer requested partial refund
  *     responses:
  *       200:
- *         description: Reembolso procesado exitosamente
+ *         description: Refund processed successfully
  *         content:
  *           application/json:
  *             schema:
@@ -171,19 +170,19 @@
  *               status: REFUNDED
  *               amount: 500
  *       400:
- *         description: No se puede reembolsar (transacción no completada o no encontrada)
+ *         description: Cannot refund (transaction not completed or not found)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
- *         description: API key inválida o faltante
+ *         description: Invalid or missing API key
  *
  * /api/v1/payments/callback:
  *   get:
  *     tags: [Payments]
- *     summary: Callback de PayPal (redirección del usuario)
- *     description: Endpoint al que PayPal redirige al usuario después de aprobar el pago. Captura el pago y redirige al comercio.
+ *     summary: PayPal callback (user redirect)
+ *     description: Endpoint that PayPal redirects to after the user approves the payment. Captures the payment and redirects back to the merchant.
  *     parameters:
  *       - in: query
  *         name: token
@@ -196,10 +195,10 @@
  *         name: PayerID
  *         schema:
  *           type: string
- *         description: ID del pagador en PayPal
+ *         description: PayPal Payer ID
  *     responses:
  *       302:
- *         description: Redirecciona al returnUrl del comercio con transactionId y status
+ *         description: Redirects to the merchant's returnUrl with transactionId and status
  *       400:
- *         description: Token faltante
+ *         description: Missing token
  */

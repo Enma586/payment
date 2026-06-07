@@ -16,7 +16,7 @@
  *           example:
  *             amount: 1000
  *             currency: USD
- *             provider: stripe
+ *             provider: paypal
  *             paymentMethod: card
  *             returnUrl: https://micomercio.com/success
  *             cancelUrl: https://micomercio.com/cancel

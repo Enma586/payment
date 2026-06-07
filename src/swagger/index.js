@@ -17,7 +17,7 @@ const options = {
           type: 'apiKey',
           in: 'header',
           name: 'x-api-key',
-          description: 'API key para autenticación entre servicios',
+          description: 'API key para pruebas: demo-key-123',
         },
       },
       schemas: {

@@ -38,11 +38,12 @@ app.get('/api-docs', (req, res) => {
   <div id="swagger-ui"></div>
   <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
   <script>
-    SwaggerUIBundle({
+    const ui = SwaggerUIBundle({
       url: '/api-docs.json',
       dom_id: '#swagger-ui',
       deepLinking: true,
       presets: [SwaggerUIBundle.presets.apis],
+      onComplete: () => ui.preauthorizeApiKey('ApiKeyAuth', 'demo-key-123'),
     });
   </script>
 </body>

@@ -15,8 +15,8 @@
  *       5. Consulta el estado con `GET /api/v1/payments/{id}/status`
  *
  *       **Cuenta sandbox para pruebas:**
- *       - Correo: `sb-xxxxx@personal.example.com`
- *       - Contraseña: `12345678`
+ *       - Correo: `sb-5evpo51532843@personal.example.com`
+ *       - Contraseña: `/kd*w{2I`
  *       *(crea tu propia cuenta en https://developer.paypal.com/dashboard/accounts)*
  *
  *       **Idempotencia:** Si envías el mismo `idempotencyKey` en otra petición, no se crea un duplicado.

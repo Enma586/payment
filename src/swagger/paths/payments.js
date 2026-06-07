@@ -7,6 +7,18 @@
  *     description: |
  *       Crea un pago con el proveedor especificado. Retorna URL de redirección para el cliente.
  *
+ *       **Cómo completar el pago:**
+ *       1. Crea el pago aquí — recibirás un `transactionId` y un `redirectUrl`
+ *       2. Abre el `redirectUrl` en un navegador
+ *       3. Inicia sesión en PayPal (sandbox) y aprueba el pago
+ *       4. PayPal te redirige automáticamente y la transacción pasa a `COMPLETED`
+ *       5. Consulta el estado con `GET /api/v1/payments/{id}/status`
+ *
+ *       **Cuenta sandbox para pruebas:**
+ *       - Correo: `sb-xxxxx@personal.example.com`
+ *       - Contraseña: `12345678`
+ *       *(crea tu propia cuenta en https://developer.paypal.com/dashboard/accounts)*
+ *
  *       **Idempotencia:** Si envías el mismo `idempotencyKey` en otra petición, no se crea un duplicado.
  *       En su lugar, retorna la transacción existente con status `200` en vez de `201`.
  *       Esto es útil para reintentar sin riesgo de cobrar dos veces.

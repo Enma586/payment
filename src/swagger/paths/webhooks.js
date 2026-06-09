@@ -29,7 +29,7 @@
  *               purchase_units:
  *                 - amount:
  *                     value: "10.00"
- *                       currency_code: USD
+ *                     currency_code: USD
  *               custom_id: d1a2b3c4-5678-90ab-cdef-1234567890ab
  *     responses:
  *       200:
